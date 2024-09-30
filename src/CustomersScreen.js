@@ -4,7 +4,6 @@ import {
   Card,
   IndexTable,
   Filters,
-  Select,
   TextField,
   Badge,
 } from '@shopify/polaris';
