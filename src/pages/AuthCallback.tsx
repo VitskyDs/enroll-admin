@@ -10,14 +10,35 @@ export default function AuthCallback() {
     if (ran.current) return
     ran.current = true
 
-    const code = new URLSearchParams(window.location.search).get('code')
-    if (code) {
-      supabase.auth.exchangeCodeForSession(code).then(() => {
-        navigate('/home', { replace: true })
-      })
-    } else {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    const error = params.get('error')
+
+    if (error) {
       navigate('/sign-in', { replace: true })
+      return
     }
+
+    if (code) {
+      // PKCE flow
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        navigate(error ? '/sign-in' : '/home', { replace: true })
+      })
+      return
+    }
+
+    // Implicit flow — Supabase auto-detects tokens from the URL hash.
+    // Check if the session is already established; if not, wait for it.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate('/home', { replace: true })
+        return
+      }
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        subscription.unsubscribe()
+        navigate(session ? '/home' : '/sign-in', { replace: true })
+      })
+    })
   }, [navigate])
 
   return (
