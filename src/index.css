@@ -27,6 +27,12 @@
   --color-loyalty-fg-dark: var(--loyalty-fg-dark);
   --color-loyalty-fg-light: var(--loyalty-fg-light);
 
+  --color-green-2: var(--green-2);
+  --color-green-3: var(--green-3);
+  --color-green-10: var(--green-10);
+  --color-blue-3: var(--blue-3);
+  --color-blue-9: var(--blue-9);
+
   --color-button-primary-bg-default: var(--button-primary-bg-default);
   --color-button-primary-bg-hover: var(--button-primary-bg-hover);
   --color-button-ghost-bg-hover: var(--button-ghost-bg-hover);
@@ -100,10 +106,15 @@
     --navbar-bg-selected: oklch(0.969 0.016 12.0);
     --navbar-fg-default: oklch(0.714 0 0);
     --background-primary-dark: oklch(0.392 0.174 16.9);
-    --amber-3: oklch(0.983 0.073 97.3);
-    --amber-5: oklch(0.928 0.156 95.2);
+    --amber-3: oklch(0.971 0.063 99.7);
+    --amber-5: oklch(0.917 0.132 98.3);
     --amber-8: oklch(0.757 0.140 76);
     --loyalty-fg-dark: var(--amber-8);
+    --green-2: #f4fbf6;
+    --green-3: #e6f6eb;
+    --green-10: #2b9a66;
+    --blue-3: #e6f4fe;
+    --blue-9: #0090ff;
     --loyalty-fg-light: oklch(0.832 0.132 80);
     --loyalty-track-default: rgb(0 0 0 / 0.051);
     --loyalty-track-on-color: rgb(255 255 255 / 0.898);
