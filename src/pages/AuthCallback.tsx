@@ -2,6 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 
+function getPostAuthDestination() {
+  const pending = sessionStorage.getItem('pendingJoinSlug')
+  return pending ? `/join/${pending}` : '/home'
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate()
   const ran = useRef(false)
@@ -22,21 +27,20 @@ export default function AuthCallback() {
     if (code) {
       // PKCE flow
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        navigate(error ? '/sign-in' : '/home', { replace: true })
+        navigate(error ? '/sign-in' : getPostAuthDestination(), { replace: true })
       })
       return
     }
 
     // Implicit flow — Supabase auto-detects tokens from the URL hash.
-    // Check if the session is already established; if not, wait for it.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate('/home', { replace: true })
+        navigate(getPostAuthDestination(), { replace: true })
         return
       }
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         subscription.unsubscribe()
-        navigate(session ? '/home' : '/sign-in', { replace: true })
+        navigate(session ? getPostAuthDestination() : '/sign-in', { replace: true })
       })
     })
   }, [navigate])
