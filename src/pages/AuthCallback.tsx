@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 
 function getPostAuthDestination() {
+  if (sessionStorage.getItem('enrollmentPending') === '1') {
+    sessionStorage.removeItem('enrollmentPending')
+    return '/home?flow=enroll'
+  }
   const pending = sessionStorage.getItem('pendingJoinSlug')
   return pending ? `/join/${pending}` : '/home'
 }

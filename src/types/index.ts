@@ -61,6 +61,20 @@ export type Customer = {
   joined_at: string
   status: 'active' | 'inactive'
   birthday: string | null
+  gender: string | null
+  phone: string | null
+  marketing_consent: boolean
+}
+
+export type Offer = {
+  id: string
+  business_id: string
+  title: string
+  description: string | null
+  points_bonus: number
+  expires_at: string | null
+  status: 'active' | 'inactive'
+  created_at: string
 }
 
 export type Reward = {
@@ -71,6 +85,17 @@ export type Reward = {
   points_cost: number
   image_url: string | null
   status: 'active' | 'inactive'
+}
+
+export type Referral = {
+  id: string
+  referrer_id: string
+  referee_id: string | null
+  referee_name: string | null
+  business_id: string
+  status: 'pending' | 'completed'
+  points_awarded: number
+  created_at: string
 }
 
 export type PointTransaction = {
