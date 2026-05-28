@@ -61,6 +61,20 @@ export type Customer = {
   joined_at: string
   status: 'active' | 'inactive'
   birthday: string | null
+  gender: string | null
+  phone: string | null
+  marketing_consent: boolean
+}
+
+export type Offer = {
+  id: string
+  business_id: string
+  title: string
+  description: string | null
+  points_bonus: number
+  expires_at: string | null
+  status: 'active' | 'inactive'
+  created_at: string
 }
 
 export type Reward = {
