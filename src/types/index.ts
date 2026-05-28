@@ -87,6 +87,17 @@ export type Reward = {
   status: 'active' | 'inactive'
 }
 
+export type Referral = {
+  id: string
+  referrer_id: string
+  referee_id: string | null
+  referee_name: string | null
+  business_id: string
+  status: 'pending' | 'completed'
+  points_awarded: number
+  created_at: string
+}
+
 export type PointTransaction = {
   id: string
   customer_id: string
