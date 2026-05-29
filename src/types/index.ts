@@ -108,3 +108,13 @@ export type PointTransaction = {
   reason: string
   created_at: string
 }
+
+export type Order = {
+  id: string
+  customer_id: string
+  business_id: string
+  items: unknown
+  total_cents: number
+  points_awarded: number
+  created_at: string
+}
