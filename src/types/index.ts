@@ -27,6 +27,7 @@ export type EarnRules = {
   points_per_visit?: number
   birthday_bonus_points?: number
   per_service_overrides?: { service_id: string; points: number }[]
+  cents_per_point?: number
 }
 
 export type RewardTiersConfig = {
