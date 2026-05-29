@@ -8,7 +8,7 @@ const DEV_BUSINESS: Business | null = import.meta.env.DEV
   ? {
       id: 'dev', name: 'Corner Cup', slug: 'corner-cup',
       logo_url: null, cover_image_url: null, tagline: null,
-      address: null, hours: null, industry: null, brand_color: '#10b981',
+      address: null, hours: null, industry: null, brand_color: null,
     }
   : null
 
