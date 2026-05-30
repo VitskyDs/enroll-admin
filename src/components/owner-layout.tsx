@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 const NAV_ITEMS = [
   { to: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/owner/customers', label: 'Customers', icon: Users },
-  { to: '/owner/services', label: 'Services', icon: Briefcase },
+  { to: '/owner/products', label: 'Products', icon: Briefcase },
   { to: '/owner/rewards', label: 'Rewards', icon: Gift },
   { to: '/owner/program', label: 'Program', icon: Star },
   { to: '/owner/settings', label: 'Settings', icon: Settings },

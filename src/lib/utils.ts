@@ -15,7 +15,7 @@ export function formatEarnRules(rules: EarnRules | null | undefined, currencyNam
     result.push(`Earn ${pts(rules.points_per_dollar)} per $1 spent`)
   if (rules.points_per_visit != null)
     result.push(`Earn ${pts(rules.points_per_visit)} per visit`)
-  if (rules.per_service_overrides?.length)
+  if (rules.per_product_overrides?.length)
     result.push('Bonus points on select items')
   return result
 }
