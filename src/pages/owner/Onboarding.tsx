@@ -18,6 +18,8 @@ type Step =
   | 'website-url'
   | 'product-input'
   | 'product-loading'
+  | 'file-loading'
+  | 'product-retry'
   | 'product-selection'
   | 'goal-primary'
   | 'goal-frequency'
@@ -41,6 +43,8 @@ const PROGRESS: Record<Step, number> = {
   'website-url': 18,
   'product-input': 24,
   'product-loading': 30,
+  'file-loading': 30,
+  'product-retry': 28,
   'product-selection': 36,
   'goal-primary': 50,
   'goal-frequency': 62,
@@ -142,11 +146,17 @@ export default function OwnerOnboarding() {
       if (!active) return
       setExtractedProducts(products)
       setSelectedIdxs(new Set(products.map((_, i) => i)))
-      setStep('product-selection')
-      await pushAi(products.length > 0
-        ? `I found ${products.length} products. Select the ones you'd like to include.`
-        : "I couldn't find any products automatically. You can add them manually later.",
-      )
+      if (products.length > 0) {
+        setStep('product-selection')
+        await pushAi(`I found ${products.length} products. Select the ones you'd like to include.`)
+      } else {
+        setStep('product-retry')
+        await pushAi("I couldn't find any products on that page. Upload a file or take a photo of your menu instead.")
+      }
+    }).catch(async () => {
+      if (!active) return
+      setStep('product-retry')
+      await pushAi("I had trouble reading that page. Upload a file or take a photo of your menu instead.")
     })
     return () => { active = false }
   }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -218,6 +228,26 @@ export default function OwnerOnboarding() {
       const next = new Set(prev)
       next.has(idx) ? next.delete(idx) : next.add(idx)
       return next
+    })
+  }
+
+  function handleFile(file: File) {
+    snapshot()
+    pushUser(`Uploaded: ${file.name}`)
+    setStep('file-loading')
+    extractProductsFromFile(file).then(async products => {
+      setExtractedProducts(products)
+      setSelectedIdxs(new Set(products.map((_, i) => i)))
+      if (products.length > 0) {
+        setStep('product-selection')
+        await pushAi(`Found ${products.length} products. Select the ones to include.`)
+      } else {
+        setStep('product-retry')
+        await pushAi("I couldn't read any products from that. Try another file or a photo of your menu.")
+      }
+    }).catch(async () => {
+      setStep('product-retry')
+      await pushAi("Something went wrong reading that file. Try another file or a photo of your menu.")
     })
   }
 
@@ -297,6 +327,8 @@ export default function OwnerOnboarding() {
     switch (step) {
       case 'product-loading':
         return <LoadingRow text="Scanning for products…" />
+      case 'file-loading':
+        return <LoadingRow text="Reading your file…" />
       case 'product-selection':
         return (
           <div className="flex flex-col gap-2">
@@ -434,19 +466,27 @@ export default function OwnerOnboarding() {
               pushAi('Let me scan that for products.')
               setStep('product-loading')
             }}
-            onFile={file => {
-              snapshot()
-              pushUser(`Uploaded: ${file.name}`)
-              setStep('product-loading')
-              pushAi('Reading your file…')
-              extractProductsFromFile(file).then(async products => {
-                setExtractedProducts(products)
-                setSelectedIdxs(new Set(products.map((_, i) => i)))
-                setStep('product-selection')
-                await pushAi(`Found ${products.length} products. Select the ones to include.`)
-              })
-            }}
+            onFile={handleFile}
           />
+        )
+
+      case 'product-retry':
+        return (
+          <div className="flex flex-col gap-2">
+            <ProductInputOptions showUrl={false} onUrl={() => {}} onFile={handleFile} />
+            <button
+              type="button"
+              className="text-xs text-muted-foreground text-center py-1 hover:text-foreground transition-colors"
+              onClick={() => {
+                snapshot()
+                pushUser("I'll add products later")
+                setStep('goal-primary')
+                pushAi("No problem. Now let's design your program. What's your primary goal?")
+              }}
+            >
+              Skip — I'll add products later
+            </button>
+          </div>
         )
 
       case 'product-selection':
@@ -581,10 +621,7 @@ function TypingIndicator() {
   return (
     <div className="flex gap-2 items-start">
       <div className="shrink-0 size-7 rounded-full bg-foreground flex items-center justify-center mt-0.5">
-        <span className="text-background text-[10px] font-bold">E</span>
-      </div>
-      <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-2.5">
-        <Loader2 size={16} className="animate-spin text-muted-foreground" />
+        <Loader2 size={14} className="animate-spin text-background" />
       </div>
     </div>
   )
@@ -663,7 +700,7 @@ function OptionList({
   )
 }
 
-function ProductInputOptions({ onUrl, onFile }: { onUrl: (url: string) => void; onFile: (file: File) => void }) {
+function ProductInputOptions({ onUrl, onFile, showUrl = true }: { onUrl: (url: string) => void; onFile: (file: File) => void; showUrl?: boolean }) {
   const [urlMode, setUrlMode] = useState(false)
   const [urlValue, setUrlValue] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -680,19 +717,21 @@ function ProductInputOptions({ onUrl, onFile }: { onUrl: (url: string) => void; 
 
   return (
     <div className="flex flex-col gap-2">
-      <button type="button" onClick={() => setUrlMode(true)} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
-        <Link2 size={16} className="text-muted-foreground shrink-0" />
-        <span>Enter your website URL</span>
-      </button>
+      {showUrl && (
+        <button type="button" onClick={() => setUrlMode(true)} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
+          <Link2 size={16} className="text-muted-foreground shrink-0" />
+          <span>Enter your website URL</span>
+        </button>
+      )}
       <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
         <Upload size={16} className="text-muted-foreground shrink-0" />
-        <span>Upload a file or image</span>
+        <span>Upload a PDF or image of your menu</span>
       </button>
       <button type="button" onClick={() => cameraRef.current?.click()} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
         <Camera size={16} className="text-muted-foreground shrink-0" />
         <span>Take a photo of your menu</span>
       </button>
-      <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
+      <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
     </div>
   )
