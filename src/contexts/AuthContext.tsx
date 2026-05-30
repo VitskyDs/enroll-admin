@@ -11,6 +11,9 @@ type AuthContextValue = {
   isEnrolled: boolean
   businessId: string | null
   brandColor: string | null
+  isOwner: boolean
+  ownedBusinessId: string | null
+  isOwnerLoading: boolean
   setEnrolledCustomer: (customer: Pick<Customer, 'id' | 'points'> | null) => void
   setBusinessId: (id: string) => void
   signOut: () => Promise<void>
@@ -25,6 +28,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [enrolledCustomer, setEnrolledCustomer] = useState<Pick<Customer, 'id' | 'points'> | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [brandColor, setBrandColor] = useState<string | null>(null)
+  const [ownedBusinessId, setOwnedBusinessId] = useState<string | null>(null)
+  const [isOwnerLoading, setIsOwnerLoading] = useState(false)
+
+  useEffect(() => {
+    if (!user) { setOwnedBusinessId(null); return }
+    setIsOwnerLoading(true)
+    supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+      .then(({ data }) => {
+        setOwnedBusinessId(data?.id ?? null)
+        setIsOwnerLoading(false)
+      })
+  }, [user])
 
   useEffect(() => {
     if (!businessId) { setBrandColor(null); return }
@@ -56,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setEnrolledCustomer(null)
     setBusinessId(null)
     setBrandColor(null)
+    setOwnedBusinessId(null)
   }
 
   return (
@@ -67,6 +83,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isEnrolled: !!enrolledCustomer,
       businessId,
       brandColor,
+      isOwner: !!ownedBusinessId,
+      ownedBusinessId,
+      isOwnerLoading,
       setEnrolledCustomer,
       setBusinessId,
       signOut,

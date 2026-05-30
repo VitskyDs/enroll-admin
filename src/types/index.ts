@@ -1,5 +1,6 @@
 export type Business = {
   id: string
+  owner_id?: string
   name: string
   slug: string
   logo_url: string | null

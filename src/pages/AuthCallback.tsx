@@ -28,23 +28,30 @@ export default function AuthCallback() {
       return
     }
 
+    async function resolveDestination(userId: string) {
+      const { data } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+      return data ? '/owner/dashboard' : getPostAuthDestination()
+    }
+
     if (code) {
       // PKCE flow
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        navigate(error ? '/sign-in' : getPostAuthDestination(), { replace: true })
+      supabase.auth.exchangeCodeForSession(code).then(async ({ data, error }) => {
+        if (error) { navigate('/sign-in', { replace: true }); return }
+        navigate(await resolveDestination(data.session.user.id), { replace: true })
       })
       return
     }
 
     // Implicit flow — Supabase auto-detects tokens from the URL hash.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        navigate(getPostAuthDestination(), { replace: true })
+        navigate(await resolveDestination(session.user.id), { replace: true })
         return
       }
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         subscription.unsubscribe()
-        navigate(session ? getPostAuthDestination() : '/sign-in', { replace: true })
+        if (!session) { navigate('/sign-in', { replace: true }); return }
+        resolveDestination(session.user.id).then(dest => navigate(dest, { replace: true }))
       })
     })
   }, [navigate])
