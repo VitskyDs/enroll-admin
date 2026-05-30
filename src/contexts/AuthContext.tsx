@@ -16,6 +16,7 @@ type AuthContextValue = {
   isOwnerLoading: boolean
   setEnrolledCustomer: (customer: Pick<Customer, 'id' | 'points'> | null) => void
   setBusinessId: (id: string) => void
+  setOwnedBusinessId: (id: string) => void
   signOut: () => Promise<void>
 }
 
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isOwnerLoading,
       setEnrolledCustomer,
       setBusinessId,
+      setOwnedBusinessId,
       signOut,
     }}>
       {children}
