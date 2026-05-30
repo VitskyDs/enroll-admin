@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 
 export default function SignIn() {
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   async function handleGoogleSignIn() {
     setLoading(true)
@@ -27,7 +29,7 @@ export default function SignIn() {
         </p>
       </div>
 
-      <div className="pb-12">
+      <div className="pb-12 flex flex-col gap-3">
         <Button
           variant="outline"
           className="w-full gap-3 h-12 text-sm font-medium"
@@ -37,6 +39,15 @@ export default function SignIn() {
           <GoogleLogo />
           Continue with Google
         </Button>
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-1"
+            onClick={() => navigate('/owner/onboarding')}
+          >
+            Dev: test onboarding
+          </button>
+        )}
       </div>
     </div>
   )

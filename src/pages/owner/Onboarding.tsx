@@ -177,7 +177,18 @@ export default function OwnerOnboarding() {
   }
 
   async function handleSubmit() {
-    if (!user || !generatedProgram) return
+    if (!generatedProgram) return
+
+    // Dev mode without a real session: skip DB write, go straight to dashboard
+    if (import.meta.env.DEV && !user) {
+      setStep('submitting')
+      await new Promise(r => setTimeout(r, 800))
+      setOwnedBusinessId('dev-mock')
+      navigate('/owner/dashboard', { replace: true })
+      return
+    }
+
+    if (!user) return
     setStep('submitting')
 
     const slug = slugify(businessName)
