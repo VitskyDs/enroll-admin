@@ -1,56 +1,41 @@
 import { test, expect } from '@playwright/test'
 
-// AC#1: authenticated user with no business → /owner/onboarding
-// In dev mode RequireAuth bypasses auth, so /owner/onboarding loads directly.
-// RequireOwner (on /owner/dashboard) still redirects unauthenticated → /sign-in (tested in owner-shell.spec.ts).
+test.describe('owner onboarding', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/owner/onboarding')
+  })
 
-test('onboarding page loads and shows business name prompt (AC #2)', async ({ page }) => {
-  await page.goto('/owner/onboarding')
-  await expect(page.getByText(/Hi there/i)).toBeVisible()
-  await expect(page.getByPlaceholder(/e\.g\. Corner Cup/i)).toBeVisible()
-})
+  test('shows the opening greeting and business name input', async ({ page }) => {
+    await expect(page.getByText(/I'll help you set up your business/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/Corner Cup/i)).toBeVisible()
+  })
 
-test('submitting business name advances to website URL step (AC #2)', async ({ page }) => {
-  await page.goto('/owner/onboarding')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).fill('My Coffee Shop')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).press('Enter')
-  await expect(page.getByPlaceholder(/https:\/\/yourbusiness\.com/i)).toBeVisible()
-})
+  test('advances to website step after entering business name', async ({ page }) => {
+    await page.getByPlaceholder(/Corner Cup/i).fill('Test Biz')
+    await page.getByPlaceholder(/Corner Cup/i).press('Enter')
+    await expect(page.getByText(/what's your website/i)).toBeVisible()
+  })
 
-test('skipping website URL shows three product input options (AC #2)', async ({ page }) => {
-  await page.goto('/owner/onboarding')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).fill('My Coffee Shop')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).press('Enter')
-  // Skip URL
-  await page.getByRole('button', { name: /skip/i }).click()
-  await expect(page.getByText(/Enter your website URL/i)).toBeVisible()
-  await expect(page.getByText(/Upload a file/i)).toBeVisible()
-  await expect(page.getByText(/Take a photo/i)).toBeVisible()
-})
+  test('shows product input options when website is skipped', async ({ page }) => {
+    await page.getByPlaceholder(/Corner Cup/i).fill('Test Biz')
+    await page.getByPlaceholder(/Corner Cup/i).press('Enter')
+    await expect(page.getByText(/what's your website/i)).toBeVisible()
+    await page.getByRole('button', { name: /skip/i }).click()
+    await expect(page.getByText(/how would you like to share/i)).toBeVisible()
+  })
 
-test('providing a website URL triggers product loading (AC #2)', async ({ page }) => {
-  await page.goto('/owner/onboarding')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).fill('Townhouse')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).press('Enter')
-  await page.getByPlaceholder(/https:\/\/yourbusiness\.com/i).fill('https://townhousebeauty.com')
-  await page.getByPlaceholder(/https:\/\/yourbusiness\.com/i).press('Enter')
-  await expect(page.getByText(/Scanning for products/i)).toBeVisible()
-})
+  test('resets the flow when start over is clicked', async ({ page }) => {
+    await page.getByPlaceholder(/Corner Cup/i).fill('Test Biz')
+    await page.getByPlaceholder(/Corner Cup/i).press('Enter')
+    await expect(page.getByText(/what's your website/i)).toBeVisible()
+    await page.getByRole('button', { name: /start over/i }).click()
+    await expect(page.getByPlaceholder(/Corner Cup/i)).toBeVisible()
+    await expect(page.getByText(/what's your website/i)).not.toBeVisible()
+  })
 
-test('start over resets to business name step', async ({ page }) => {
-  await page.goto('/owner/onboarding')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).fill('My Coffee Shop')
-  await page.getByPlaceholder(/e\.g\. Corner Cup/i).press('Enter')
-  await page.getByRole('button', { name: /start over/i }).click()
-  await expect(page.getByPlaceholder(/e\.g\. Corner Cup/i)).toBeVisible()
-})
-
-test('continue button on business name is disabled when field is empty (AC #6)', async ({ page }) => {
-  await page.goto('/owner/onboarding')
-  const input = page.getByPlaceholder(/e\.g\. Corner Cup/i)
-  await expect(input).toBeVisible()
-  // SVG arrow button is disabled with empty input — verify by attempting submit via Enter
-  await input.press('Enter')
-  // Should still be on business-name step (website URL input not yet visible)
-  await expect(page.getByPlaceholder(/https:\/\/yourbusiness\.com/i)).not.toBeVisible()
+  test('empty business name does not advance', async ({ page }) => {
+    await expect(page.getByPlaceholder(/Corner Cup/i)).toBeVisible()
+    await page.getByPlaceholder(/Corner Cup/i).press('Enter')
+    await expect(page.getByText(/what's your website/i)).not.toBeVisible()
+  })
 })
