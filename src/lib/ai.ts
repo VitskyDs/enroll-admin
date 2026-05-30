@@ -25,33 +25,39 @@ export type GeneratedProgram = {
   brand_voice: Record<string, unknown>
 }
 
+const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-products`
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+async function callExtractFn(body: Record<string, unknown>): Promise<ExtractedProduct[]> {
+  const res = await fetch(EDGE_FN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${ANON_KEY}`,
+      'apikey': ANON_KEY,
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`extract-products: ${await res.text()}`)
+  const { products } = await res.json()
+  return products ?? []
+}
+
+export async function extractProductsFromUrl(url: string): Promise<ExtractedProduct[]> {
+  return callExtractFn({ url })
+}
+
+export async function extractProductsFromFile(file: File): Promise<ExtractedProduct[]> {
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve((reader.result as string).split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+  return callExtractFn({ file: base64, mimeType: file.type || 'image/jpeg' })
+}
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-// TODO: replace with real Claude API call (vision + text extraction)
-export async function extractProductsFromUrl(_url: string): Promise<ExtractedProduct[]> {
-  await sleep(1800)
-  return [
-    { name: 'Classic Manicure', description: 'Shape, buff and polish', price_cents: 3500, category: 'Nails' },
-    { name: 'Gel Manicure', description: 'Long-lasting gel colour of your choice', price_cents: 5500, category: 'Nails' },
-    { name: 'Pedicure', description: 'Full foot care and polish', price_cents: 4500, category: 'Nails' },
-    { name: 'Gel Pedicure', description: 'Gel finish foot treatment', price_cents: 6500, category: 'Nails' },
-    { name: 'Brow shaping', description: 'Wax and tidy', price_cents: 2000, category: 'Brows & Lashes' },
-    { name: 'Lash tint', description: 'Semi-permanent tint', price_cents: 2500, category: 'Brows & Lashes' },
-  ]
-}
-
-// TODO: replace with real Claude vision API call
-export async function extractProductsFromFile(_file: File): Promise<ExtractedProduct[]> {
-  await sleep(2000)
-  return [
-    { name: 'Espresso', description: 'Double shot', price_cents: 350, category: 'Coffee' },
-    { name: 'Latte', description: 'Espresso with steamed milk', price_cents: 500, category: 'Coffee' },
-    { name: 'Cappuccino', description: 'Equal parts espresso, milk and foam', price_cents: 480, category: 'Coffee' },
-    { name: 'Cold brew', description: '12-hour steep, served over ice', price_cents: 550, category: 'Coffee' },
-    { name: 'Croissant', description: 'Butter or almond', price_cents: 400, category: 'Pastries' },
-    { name: 'Banana bread', description: 'Warm slice with butter', price_cents: 450, category: 'Pastries' },
-  ]
-}
 
 // TODO: replace with real Claude API call
 export async function generateLoyaltyProgram(input: ProgramInput): Promise<GeneratedProgram> {
