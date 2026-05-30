@@ -21,9 +21,9 @@ export default function SignIn() {
         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-2">
           <span className="text-primary-foreground text-2xl font-bold select-none">E</span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Enroll</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Loyalty made easy</h1>
         <p className="text-muted-foreground text-sm max-w-xs">
-          Track points, earn rewards, and discover services from businesses you love.
+          Enroll grows your business through smarter loyalty and subscriptions.
         </p>
       </div>
 
