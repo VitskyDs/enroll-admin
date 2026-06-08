@@ -8,7 +8,9 @@ function getPostAuthDestination() {
     return '/home?flow=enroll'
   }
   const pending = sessionStorage.getItem('pendingJoinSlug')
-  return pending ? `/join/${pending}` : '/home'
+  const ref = sessionStorage.getItem('pendingJoinRef')
+  if (ref) sessionStorage.removeItem('pendingJoinRef')
+  return pending ? `/join/${pending}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}` : '/home'
 }
 
 export default function AuthCallback() {
