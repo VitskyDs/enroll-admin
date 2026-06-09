@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 
 function getPostAuthDestination() {
@@ -15,6 +16,7 @@ function getPostAuthDestination() {
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const ran = useRef(false)
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function AuthCallback() {
 
   return (
     <div className="flex items-center justify-center h-full">
-      <p className="text-muted-foreground text-sm">Signing you in…</p>
+      <p className="text-muted-foreground text-sm">{t('authCallback.signingIn')}</p>
     </div>
   )
 }

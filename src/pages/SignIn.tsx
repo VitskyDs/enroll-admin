@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 
 export default function SignIn() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   async function handleGoogleSignIn() {
     setLoading(true)
@@ -23,9 +25,9 @@ export default function SignIn() {
         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-2">
           <span className="text-primary-foreground text-2xl font-bold select-none">E</span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Loyalty made easy</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('signIn.tagline')}</h1>
         <p className="text-muted-foreground text-sm max-w-xs">
-          Enroll grows your business through smarter loyalty and subscriptions.
+          {t('signIn.subtitle')}
         </p>
       </div>
 
@@ -37,7 +39,7 @@ export default function SignIn() {
           onClick={handleGoogleSignIn}
         >
           <GoogleLogo />
-          Continue with Google
+          {t('signIn.continueGoogle')}
         </Button>
         {import.meta.env.DEV && (
           <button
@@ -45,7 +47,7 @@ export default function SignIn() {
             className="text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-1"
             onClick={() => navigate('/owner/onboarding')}
           >
-            Dev: test onboarding
+            {t('signIn.devOnboarding')}
           </button>
         )}
       </div>

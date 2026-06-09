@@ -31,3 +31,4 @@ supabase/.temp/
 *.sln
 *.sw?
 supabase/functions/.env
+test-results/

@@ -6,16 +6,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatEarnRules(rules: EarnRules | null | undefined, currencyName: string): string[] {
+export type EarnRuleDescriptor = { key: string; count?: number }
+
+export function formatEarnRules(rules: EarnRules | null | undefined): EarnRuleDescriptor[] {
   if (!rules) return []
-  const base = currencyName.toLowerCase().replace(/s$/, '')
-  const pts = (n: number) => `${n} ${n === 1 ? base : `${base}s`}`
-  const result: string[] = []
+  const result: EarnRuleDescriptor[] = []
   if (rules.points_per_dollar != null)
-    result.push(`Earn ${pts(rules.points_per_dollar)} per $1 spent`)
+    result.push({ key: 'earnRules.perDollar', count: rules.points_per_dollar })
   if (rules.points_per_visit != null)
-    result.push(`Earn ${pts(rules.points_per_visit)} per visit`)
+    result.push({ key: 'earnRules.perVisit', count: rules.points_per_visit })
   if (rules.per_product_overrides?.length)
-    result.push('Bonus points on select items')
+    result.push({ key: 'earnRules.bonusSelect' })
   return result
+}
+
+export function localeFor(lang: string): string {
+  return lang === 'he' ? 'he-IL' : 'en-US'
 }
