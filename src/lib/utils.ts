@@ -23,3 +23,25 @@ export function formatEarnRules(rules: EarnRules | null | undefined): EarnRuleDe
 export function localeFor(lang: string): string {
   return lang === 'he' ? 'he-IL' : 'en-US'
 }
+
+export type Currency = 'usd' | 'ils'
+
+function toCurrencyCode(currency: Currency): string {
+  return currency === 'ils' ? 'ILS' : 'USD'
+}
+
+export function formatPrice(cents: number, currency: Currency, lang: string): string {
+  return new Intl.NumberFormat(localeFor(lang), {
+    style: 'currency',
+    currency: toCurrencyCode(currency),
+  }).format(cents / 100)
+}
+
+export function formatCurrencyUnit(currency: Currency, lang: string): string {
+  return new Intl.NumberFormat(localeFor(lang), {
+    style: 'currency',
+    currency: toCurrencyCode(currency),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(1)
+}
