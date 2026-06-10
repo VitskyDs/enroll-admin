@@ -16,7 +16,12 @@ const CurrencyContext = createContext<CurrencyContextValue>({
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const stored = localStorage.getItem(CURRENCY_STORAGE_KEY)
-  const [currency, setCurrencyState] = useState<Currency>(stored === 'ils' ? 'ils' : 'usd')
+  const storedLang = localStorage.getItem('enroll-lang')
+  const initial: Currency =
+    stored === 'ils' ? 'ils' :
+    stored === 'usd' ? 'usd' :
+    storedLang === 'he' ? 'ils' : 'usd'
+  const [currency, setCurrencyState] = useState<Currency>(initial)
 
   function setCurrency(next: Currency) {
     setCurrencyState(next)
