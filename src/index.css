@@ -173,3 +173,9 @@ html, body, #root {
   height: 100%;
   margin: 0;
 }
+
+html:lang(he) body,
+html:lang(he) .font-sans,
+html:lang(he) .font-heading {
+  font-family: 'Heebo', sans-serif;
+}
