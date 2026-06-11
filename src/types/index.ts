@@ -10,6 +10,7 @@ export type Business = {
   hours: string | null
   industry: string | null
   brand_color: string | null
+  currency: string | null
 }
 
 export type LoyaltyProgram = {

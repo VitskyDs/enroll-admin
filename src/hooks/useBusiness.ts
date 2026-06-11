@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { demoSlugForLang, DEMO_SLUG_HE } from '@/lib/demo'
+import { useCachedQuery } from '@/hooks/useCachedQuery'
 import type { Business } from '@/types'
 
 // When VITE_BUSINESS_SLUG is explicitly configured, use it for all languages
@@ -12,22 +12,12 @@ export function useBusiness() {
   const { i18n } = useTranslation()
   const slug = i18n.language === 'he' ? DEMO_SLUG_HE : (SLUG ?? demoSlugForLang(i18n.language))
 
-  const [business, setBusiness] = useState<Business | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    setBusiness(null)
-    supabase
-      .from('businesses')
-      .select('*')
-      .eq('slug', slug)
-      .single()
-      .then(({ data }) => {
-        setBusiness(data)
-        setLoading(false)
-      })
-  }, [slug])
+  const { data: business, loading } = useCachedQuery<Business | null>(
+    'business',
+    slug,
+    async () => (await supabase.from('businesses').select('*').eq('slug', slug).single()).data,
+    null,
+  )
 
   return { business, loading }
 }

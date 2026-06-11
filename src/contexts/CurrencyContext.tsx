@@ -1,4 +1,6 @@
 import { createContext, useContext, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useBusiness } from '@/hooks/useBusiness'
 import type { Currency } from '@/lib/utils'
 
 export { type Currency }
@@ -14,17 +16,25 @@ const CurrencyContext = createContext<CurrencyContextValue>({
   setCurrency: () => {},
 })
 
-export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+function readOverride(): Currency | null {
   const stored = localStorage.getItem(CURRENCY_STORAGE_KEY)
-  const storedLang = localStorage.getItem('enroll-lang')
-  const initial: Currency =
-    stored === 'ils' ? 'ils' :
-    stored === 'usd' ? 'usd' :
-    storedLang === 'he' ? 'ils' : 'usd'
-  const [currency, setCurrencyState] = useState<Currency>(initial)
+  return stored === 'ils' || stored === 'usd' ? stored : null
+}
+
+export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+  const { business } = useBusiness()
+  const { i18n } = useTranslation()
+  // A manual choice in Profile overrides; otherwise the active business decides.
+  const [override, setOverride] = useState<Currency | null>(readOverride)
+
+  const businessCurrency: Currency =
+    business?.currency === 'ils' ? 'ils' :
+    business?.currency === 'usd' ? 'usd' :
+    i18n.language === 'he' ? 'ils' : 'usd'
+  const currency = override ?? businessCurrency
 
   function setCurrency(next: Currency) {
-    setCurrencyState(next)
+    setOverride(next)
     localStorage.setItem(CURRENCY_STORAGE_KEY, next)
   }
 

@@ -45,3 +45,13 @@ export function formatCurrencyUnit(currency: Currency, lang: string): string {
     maximumFractionDigits: 0,
   }).format(1)
 }
+
+// Customer-facing order number: a stable, digits-only code derived from the
+// order UUID (UUIDs are hex, which would otherwise show letters).
+export function orderNumber(orderId: string): string {
+  let hash = 0
+  for (let i = 0; i < orderId.length; i++) {
+    hash = (hash * 31 + orderId.charCodeAt(i)) >>> 0
+  }
+  return String(hash % 100_000_000).padStart(8, '0')
+}
