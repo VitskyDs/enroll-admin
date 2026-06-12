@@ -53,6 +53,13 @@ export type Product = {
   points_value: number | null
 }
 
+export type CustomerFavorite = {
+  id: string
+  customer_id: string
+  product_id: string
+  created_at: string
+}
+
 export type Customer = {
   id: string
   user_id: string
