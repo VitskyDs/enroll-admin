@@ -117,7 +117,6 @@
     --blue-9: #0090ff;
     --loyalty-fg-light: oklch(0.832 0.132 80);
     --loyalty-track-default: rgb(0 0 0 / 0.051);
-    --loyalty-track-on-color: rgb(255 255 255 / 0.898);
     --button-primary-bg-default: var(--brand, oklch(0.514 0.222 16.935));
     --button-primary-bg-hover: color-mix(in oklch, var(--brand, oklch(0.514 0.222 16.935)) 75%, black);
     --button-ghost-bg-hover: color-mix(in oklch, var(--brand, oklch(0.514 0.222 16.935)) 10%, white);
