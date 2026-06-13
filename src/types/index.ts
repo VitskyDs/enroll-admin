@@ -22,6 +22,8 @@ export type LoyaltyProgram = {
   reward_tiers: RewardTiersConfig
   referral_rules: ReferralRules
   brand_voice: Record<string, unknown>
+  punch_card_target?: number
+  punch_card_reward_id?: string | null
 }
 
 export type EarnRules = {
@@ -68,6 +70,7 @@ export type Customer = {
   email: string
   points: number
   lifetime_points: number
+  punch_card_count: number
   tier: string | null
   joined_at: string
   status: 'active' | 'inactive'
