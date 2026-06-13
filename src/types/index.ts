@@ -33,7 +33,7 @@ export type EarnRules = {
 }
 
 export type RewardTiersConfig = {
-  tiers: { name: string; min_points: number; perks: string[] }[]
+  tiers: { name: string; min_points: number; multiplier?: number; perk?: string; perks: string[] }[]
 }
 
 export type ReferralRules = {
