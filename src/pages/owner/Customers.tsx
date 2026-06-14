@@ -3,8 +3,9 @@ import { Search, X, ChevronUp, ChevronDown, ChevronsUpDown, Users } from 'lucide
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useOwnerCustomers, type OwnerCustomer } from '@/hooks/useOwnerCustomers'
+import { useAuth } from '@/contexts/AuthContext'
+import { CustomerDetailPanel, CustomerDetailDrawer } from '@/components/owner/customer-detail-panel'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -224,63 +225,13 @@ function CustomerCard({
   )
 }
 
-// ─── Side panel (detail slot — filled by TASK-34) ────────────────────────────
-
-function CustomerDetailPanel({
-  customerId,
-  onClose,
-}: {
-  customerId: string | null
-  onClose: () => void
-}) {
-  if (!customerId) return null
-  return (
-    <aside className="hidden md:flex flex-col w-[360px] shrink-0 border-l bg-background overflow-y-auto">
-      <div className="flex items-center justify-between h-14 border-b px-4 shrink-0">
-        <span className="font-semibold text-sm">Customer detail</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
-          <X size={16} />
-        </Button>
-      </div>
-      <div className="flex-1 p-4 flex items-center justify-center text-sm text-muted-foreground">
-        Detail panel coming soon
-      </div>
-    </aside>
-  )
-}
-
-// ─── Mobile drawer (detail slot) ─────────────────────────────────────────────
-
-function MobileDetailDrawer({
-  customerId,
-  onClose,
-}: {
-  customerId: string | null
-  onClose: () => void
-}) {
-  if (!customerId) return null
-  return (
-    <div className="fixed inset-0 z-50 md:hidden" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50" />
-      <div
-        className="absolute inset-x-0 bottom-0 bg-background rounded-t-xl border-t pt-4 pb-8 px-4 max-h-[80vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="mx-auto w-12 h-1.5 rounded-full bg-muted mb-4" />
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-semibold">Customer detail</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}><X size={16} /></Button>
-        </div>
-        <div className="text-sm text-muted-foreground text-center py-8">Detail panel coming soon</div>
-      </div>
-    </div>
-  )
-}
+// (CustomerDetailPanel and CustomerDetailDrawer are imported from @/components/owner/customer-detail-panel)
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerCustomers() {
   const { customers, loading } = useOwnerCustomers()
+  const { ownedBusinessId } = useAuth()
 
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -523,10 +474,18 @@ export default function OwnerCustomers() {
       </div>
 
       {/* Desktop side panel */}
-      <CustomerDetailPanel customerId={selectedId} onClose={() => setSelectedId(null)} />
+      <CustomerDetailPanel
+        customer={selectedId ? (customers.find(c => c.id === selectedId) ?? null) : null}
+        businessId={ownedBusinessId}
+        onClose={() => setSelectedId(null)}
+      />
 
       {/* Mobile bottom drawer */}
-      <MobileDetailDrawer customerId={selectedId} onClose={() => setSelectedId(null)} />
+      <CustomerDetailDrawer
+        customer={selectedId ? (customers.find(c => c.id === selectedId) ?? null) : null}
+        businessId={ownedBusinessId}
+        onClose={() => setSelectedId(null)}
+      />
     </div>
   )
 }
