@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   LogOut,
+  HeartHandshake,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/button'
 const NAV_ITEMS = [
   { to: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/owner/customers', label: 'Customers', icon: Users },
+  { to: '/owner/catch-up', label: 'Catch up', icon: HeartHandshake },
   { to: '/owner/products', label: 'Products', icon: Briefcase },
   { to: '/owner/rewards', label: 'Rewards', icon: Gift },
   { to: '/owner/program', label: 'Program', icon: Star },
