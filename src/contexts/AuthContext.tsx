@@ -1,20 +1,16 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { Customer } from '@/types'
 
 type AuthContextValue = {
   user: User | null
   session: Session | null
   isLoading: boolean
-  enrolledCustomer: Pick<Customer, 'id' | 'points'> | null
-  isEnrolled: boolean
   businessId: string | null
   brandColor: string | null
   isOwner: boolean
   ownedBusinessId: string | null
   isOwnerLoading: boolean
-  setEnrolledCustomer: (customer: Pick<Customer, 'id' | 'points'> | null) => void
   setBusinessId: (id: string) => void
   setOwnedBusinessId: (id: string) => void
   signOut: () => Promise<void>
@@ -26,7 +22,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [enrolledCustomer, setEnrolledCustomer] = useState<Pick<Customer, 'id' | 'points'> | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [brandColor, setBrandColor] = useState<string | null>(null)
   const [ownedBusinessId, setOwnedBusinessId] = useState<string | null>(null)
@@ -69,7 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut()
-    setEnrolledCustomer(null)
     setBusinessId(null)
     setBrandColor(null)
     setOwnedBusinessId(null)
@@ -80,14 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       session,
       isLoading,
-      enrolledCustomer,
-      isEnrolled: !!enrolledCustomer,
       businessId,
       brandColor,
       isOwner: !!ownedBusinessId,
       ownedBusinessId,
       isOwnerLoading,
-      setEnrolledCustomer,
       setBusinessId,
       setOwnedBusinessId,
       signOut,
