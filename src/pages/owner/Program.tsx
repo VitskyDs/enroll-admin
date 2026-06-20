@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { Plus, Trash2, ChevronUp, ChevronDown, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -106,11 +107,12 @@ function Field({
   )
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
@@ -158,6 +160,7 @@ export default function OwnerProgram() {
   const [referralSaving, setReferralSaving] = useState(false)
 
   // ── Punch card state ────────────────────────────────────────────────────────
+  const [punchEnabled, setPunchEnabled] = useState(false)
   const [punchTarget, setPunchTarget] = useState('')
   const [punchRewardId, setPunchRewardId] = useState('')
   const [rewards, setRewards] = useState<ActiveReward[]>([])
@@ -192,6 +195,7 @@ export default function OwnerProgram() {
     setReferrerPts(rconf?.referrer_points != null ? String(rconf.referrer_points) : '')
     setRefereePts(rconf?.referee_points != null ? String(rconf.referee_points) : '')
 
+    setPunchEnabled(program.punch_card_enabled ?? false)
     setPunchTarget(program.punch_card_target != null ? String(program.punch_card_target) : '')
     setPunchRewardId(program.punch_card_reward_id ?? '')
   }, [program])
@@ -362,15 +366,19 @@ export default function OwnerProgram() {
   // ── Save punch card ─────────────────────────────────────────────────────────
   async function savePunchCard() {
     setPunchError(null)
-    if (punchTarget === '' || Number(punchTarget) < 1) {
-      setPunchError('Target punches must be at least 1.')
-      return
+    if (punchEnabled) {
+      const target = Number(punchTarget)
+      if (punchTarget === '' || target < 1 || target > 20) {
+        setPunchError('Target punches must be between 1 and 20.')
+        return
+      }
     }
     setPunchSaving(true)
     const { error } = await supabase
       .from('loyalty_programs')
       .update({
-        punch_card_target: Number(punchTarget),
+        punch_card_enabled: punchEnabled,
+        punch_card_target: punchTarget !== '' ? Number(punchTarget) : 8,
         punch_card_reward_id: punchRewardId || null,
       })
       .eq('business_id', ownedBusinessId!)
@@ -458,7 +466,7 @@ export default function OwnerProgram() {
             <p className="text-sm font-medium">Enable birthday bonus</p>
             <p className="text-xs text-muted-foreground">Award bonus points to customers on their birthday</p>
           </div>
-          <Toggle checked={birthdayEnabled} onChange={setBirthdayEnabled} />
+          <Toggle checked={birthdayEnabled} onChange={setBirthdayEnabled} label="Enable birthday bonus" />
         </div>
         {birthdayEnabled && (
           <Field label="Bonus points">
@@ -595,34 +603,54 @@ export default function OwnerProgram() {
       {/* Punch card */}
       <Section
         title="Punch card"
-        description="Customers earn a punch per qualifying visit."
+        description="Customers earn a punch per qualifying visit. When they hit the target, a reward unlocks automatically."
         onSave={savePunchCard}
         saving={punchSaving}
         error={punchError}
       >
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Target punches">
-            <Input
-              type="number"
-              min="1"
-              placeholder="e.g. 8"
-              value={punchTarget}
-              onChange={e => setPunchTarget(e.target.value)}
-            />
-          </Field>
-          <Field label="Completion reward" hint="Optional — select from active rewards">
-            <select
-              value={punchRewardId}
-              onChange={e => setPunchRewardId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-            >
-              <option value="">None</option>
-              {rewards.map(r => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-          </Field>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Enable punch card</p>
+            <p className="text-xs text-muted-foreground">Runs alongside points — each purchase earns both</p>
+          </div>
+          <Toggle checked={punchEnabled} onChange={setPunchEnabled} label="Enable punch card" />
         </div>
+        {punchEnabled && (
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Target punches" hint="Recommended: 7–10">
+              <Input
+                type="number"
+                min="1"
+                max="20"
+                placeholder="e.g. 8"
+                value={punchTarget}
+                onChange={e => setPunchTarget(e.target.value)}
+              />
+            </Field>
+            <Field label="Completion reward" hint="Select from active rewards">
+              {rewards.length === 0 ? (
+                <p className="text-xs text-muted-foreground pt-1">
+                  No active rewards yet.{' '}
+                  <Link to="/owner/rewards" className="underline">
+                    Create one first
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <select
+                  value={punchRewardId}
+                  onChange={e => setPunchRewardId(e.target.value)}
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                >
+                  <option value="">None</option>
+                  {rewards.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </div>
+        )}
       </Section>
 
       {/* Per-product earn overrides */}

@@ -22,6 +22,7 @@ export type LoyaltyProgram = {
   reward_tiers: RewardTiersConfig
   referral_rules: ReferralRules
   brand_voice: Record<string, unknown>
+  punch_card_enabled: boolean
   punch_card_target?: number
   punch_card_reward_id?: string | null
 }

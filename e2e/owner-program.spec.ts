@@ -79,8 +79,37 @@ test.describe('program settings structure (requires owner auth)', () => {
     await expect(page.getByLabel(/referee points/i)).toBeVisible()
   })
 
-  test('punch card has target punches input (AC#6)', async ({ page }) => {
+  test('punch card shows enable toggle (AC#1, AC#2)', async ({ page }) => {
     await page.goto('/owner/program')
+    await expect(page.getByRole('switch', { name: /enable punch card/i })).toBeVisible()
+  })
+
+  test('punch card target and reward fields are hidden when toggle is off (AC#5)', async ({ page }) => {
+    await page.goto('/owner/program')
+    const toggle = page.getByRole('switch', { name: /enable punch card/i })
+    if (await toggle.getAttribute('aria-checked') === 'true') {
+      await toggle.click()
+    }
+    await expect(page.getByLabel(/target punches/i)).not.toBeVisible()
+  })
+
+  test('punch card target and reward fields appear when toggle is on (AC#3, AC#4)', async ({ page }) => {
+    await page.goto('/owner/program')
+    const toggle = page.getByRole('switch', { name: /enable punch card/i })
+    if (await toggle.getAttribute('aria-checked') !== 'true') {
+      await toggle.click()
+    }
     await expect(page.getByLabel(/target punches/i)).toBeVisible()
+  })
+
+  test('punch card shows validation error when target is out of range (AC#3)', async ({ page }) => {
+    await page.goto('/owner/program')
+    const toggle = page.getByRole('switch', { name: /enable punch card/i })
+    if (await toggle.getAttribute('aria-checked') !== 'true') {
+      await toggle.click()
+    }
+    await page.getByLabel(/target punches/i).fill('99')
+    await page.locator('section').filter({ hasText: 'Punch card' }).getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText(/between 1 and 20/i)).toBeVisible()
   })
 })
