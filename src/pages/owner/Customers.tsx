@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Search, X, ChevronUp, ChevronDown, ChevronsUpDown, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
@@ -233,7 +234,8 @@ export default function OwnerCustomers() {
   const { customers, loading } = useOwnerCustomers()
   const { ownedBusinessId } = useAuth()
 
-  const [search, setSearch] = useState('')
+  const [searchParams] = useSearchParams()
+  const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [tierFilter, setTierFilter] = useState<TierFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')

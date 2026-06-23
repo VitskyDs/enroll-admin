@@ -13,6 +13,14 @@ export type DashboardStats = {
   atRiskCount: number
 }
 
+export type RecentActivity = {
+  id: string
+  customerName: string
+  points: number
+  reason: string
+  createdAt: string
+}
+
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
 }
@@ -63,6 +71,8 @@ function computeLoyaltyStrength(
 export function useOwnerDashboard() {
   const { ownedBusinessId } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [businessName, setBusinessName] = useState<string | null>(null)
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -88,6 +98,8 @@ export function useOwnerDashboard() {
           referralIdsRes,
           atRiskRes,
           programRes,
+          businessRes,
+          recentRes,
         ] = await Promise.all([
           supabase
             .from('customers')
@@ -132,6 +144,17 @@ export function useOwnerDashboard() {
             .select('punch_card_target')
             .eq('business_id', ownedBusinessId)
             .maybeSingle(),
+          supabase
+            .from('businesses')
+            .select('name')
+            .eq('id', ownedBusinessId)
+            .maybeSingle(),
+          supabase
+            .from('point_transactions')
+            .select('id, points, reason, created_at, customers(name)')
+            .eq('business_id', ownedBusinessId)
+            .order('created_at', { ascending: false })
+            .limit(6),
         ])
 
         if (cancelled) return
@@ -186,6 +209,22 @@ export function useOwnerDashboard() {
           newMembersThisWeek,
           atRiskCount: atRiskRes.count ?? 0,
         })
+
+        setBusinessName(businessRes.data?.name ?? null)
+
+        setRecentActivity(
+          (recentRes.data ?? []).map(r => {
+            // Supabase types the embedded relation as an array; it's a single row here.
+            const customer = Array.isArray(r.customers) ? r.customers[0] : r.customers
+            return {
+              id: r.id,
+              customerName: (customer as { name: string } | null)?.name ?? 'Unknown',
+              points: r.points,
+              reason: r.reason,
+              createdAt: r.created_at,
+            }
+          }),
+        )
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load dashboard')
       } finally {
@@ -197,5 +236,5 @@ export function useOwnerDashboard() {
     return () => { cancelled = true }
   }, [ownedBusinessId])
 
-  return { stats, loading, error }
+  return { stats, businessName, recentActivity, loading, error }
 }
