@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { isEmailAuthEnabled } from '@/lib/app-target'
+const isEmailAuthEnabled =
+  import.meta.env.VITE_ENABLE_EMAIL_AUTH === 'true' ||
+  import.meta.env.DEV ||
+  (typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app'))
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -41,7 +44,7 @@ export default function SignIn() {
           <GoogleLogo />
           {t('signIn.continueGoogle')}
         </Button>
-        {isEmailAuthEnabled() && <DevSignIn disabled={loading} />}
+        {isEmailAuthEnabled && <DevSignIn disabled={loading} />}
       </div>
     </div>
   )
