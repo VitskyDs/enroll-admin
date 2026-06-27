@@ -2,13 +2,23 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Plus, GripVertical, Pencil, Package, X, Check, Upload } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram'
+import type { EarnRules } from '@/types'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
+import { Drawer } from '@/components/owner/drawer'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ProductStatus = 'active' | 'draft' | 'inactive'
+
+// Points a product earns by default, derived from its price and the program's
+// points-per-dollar earn rule. Returns null when no rate is configured.
+function derivePoints(priceDollars: number, pointsPerDollar: number | null): number | null {
+  if (pointsPerDollar == null || !isFinite(priceDollars)) return null
+  return Math.round(priceDollars * pointsPerDollar)
+}
 
 type Product = {
   id: string
@@ -91,7 +101,9 @@ function Toast({ message, onDone }: { message: string; onDone: () => void }) {
 // ─── Product form drawer ──────────────────────────────────────────────────────
 
 function ProductForm({
+  open,
   draft,
+  pointsPerDollar,
   onChange,
   onSave,
   onClose,
@@ -99,7 +111,9 @@ function ProductForm({
   error,
   mode,
 }: {
+  open: boolean
   draft: FormDraft
+  pointsPerDollar: number | null
   onChange: (patch: Partial<FormDraft>) => void
   onSave: () => void
   onClose: () => void
@@ -107,6 +121,7 @@ function ProductForm({
   error: string | null
   mode: 'add' | 'edit'
 }) {
+  const derivedPoints = derivePoints(Number(draft.price_dollars), pointsPerDollar)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -119,9 +134,8 @@ function ProductForm({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <aside className="relative ml-auto w-full max-w-md bg-background border-l flex flex-col shadow-xl">
+    <Drawer open={open} onClose={onClose} side="right" className="w-full max-w-md border-l flex flex-col">
+      <>
         <div className="flex items-center justify-between h-14 border-b px-5 shrink-0">
           <span className="font-semibold text-sm">{mode === 'add' ? 'Add product' : 'Edit product'}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
@@ -208,10 +222,15 @@ function ProductForm({
               <Input
                 type="number"
                 min="0"
-                placeholder="Default"
+                placeholder={derivedPoints != null ? String(derivedPoints) : 'Default'}
                 value={draft.points_override}
                 onChange={e => onChange({ points_override: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                {derivedPoints != null
+                  ? 'Defaults from price.'
+                  : 'Set a points-per-dollar rate in Program.'}
+              </p>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Status</label>
@@ -235,8 +254,8 @@ function ProductForm({
             {saving ? 'Saving…' : mode === 'add' ? 'Add product' : 'Save changes'}
           </Button>
         </div>
-      </aside>
-    </div>
+      </>
+    </Drawer>
   )
 }
 
@@ -244,6 +263,7 @@ function ProductForm({
 
 function ProductRow({
   product,
+  pointsPerDollar,
   onEdit,
   onStatusToggle,
   onDragStart,
@@ -252,6 +272,7 @@ function ProductRow({
   isDragging,
 }: {
   product: Product
+  pointsPerDollar: number | null
   onEdit: () => void
   onStatusToggle: () => void
   onDragStart: () => void
@@ -260,6 +281,7 @@ function ProductRow({
   isDragging: boolean
 }) {
   const thumb = product.image_urls[0]
+  const points = product.points_override ?? derivePoints(product.price_cents / 100, pointsPerDollar)
   return (
     <div
       draggable
@@ -294,10 +316,12 @@ function ProductRow({
         </div>
         <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
           <span>{priceFmt(product.price_cents)}</span>
-          {product.points_override != null && (
+          {points != null && (
             <>
               <span>·</span>
-              <span>{product.points_override} pts</span>
+              <span>
+                {points} pts{product.points_override != null && ' · custom'}
+              </span>
             </>
           )}
         </div>
@@ -327,6 +351,8 @@ function ProductRow({
 
 export default function OwnerProducts() {
   const { ownedBusinessId } = useAuth()
+  const { program } = useLoyaltyProgram(ownedBusinessId)
+  const pointsPerDollar = (program?.earn_rules as EarnRules | undefined)?.points_per_dollar ?? null
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -423,7 +449,7 @@ export default function OwnerProducts() {
         .insert({
           ...payload,
           business_id: ownedBusinessId!,
-          kind: 'product',
+          kind: 'physical',
           sort_order: products.length,
           image_urls: imageUrls ?? [],
           tags: [],
@@ -475,7 +501,7 @@ export default function OwnerProducts() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl space-y-4">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Products</h1>
         <Button size="sm" onClick={openAdd}>
@@ -514,6 +540,7 @@ export default function OwnerProducts() {
             <ProductRow
               key={p.id}
               product={p}
+              pointsPerDollar={pointsPerDollar}
               onEdit={() => openEdit(p)}
               onStatusToggle={() => toggleStatus(p)}
               onDragStart={() => handleDragStart(i)}
@@ -525,17 +552,17 @@ export default function OwnerProducts() {
         </div>
       )}
 
-      {drawerOpen && (
-        <ProductForm
-          draft={draft}
-          onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
-          onSave={handleSave}
-          onClose={() => setDrawerOpen(false)}
-          saving={saving}
-          error={formError}
-          mode={editingId ? 'edit' : 'add'}
-        />
-      )}
+      <ProductForm
+        open={drawerOpen}
+        draft={draft}
+        pointsPerDollar={pointsPerDollar}
+        onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
+        onSave={handleSave}
+        onClose={() => setDrawerOpen(false)}
+        saving={saving}
+        error={formError}
+        mode={editingId ? 'edit' : 'add'}
+      />
 
       {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
     </div>

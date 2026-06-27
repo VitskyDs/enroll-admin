@@ -203,7 +203,7 @@ function QuickActionsCard({ atRiskCount, loading }: { atRiskCount: number; loadi
       <ul className="divide-y">
         {QUICK_ACTIONS.map(({ to, icon: Icon, title, desc }) => (
           <li key={title}>
-            <Link to={to} className="flex items-center gap-3 px-5 py-3.5 hover:bg-accent/50 transition-colors group">
+            <Link to={to} className="flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group">
               <Icon size={16} className="text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{title}</p>
@@ -231,7 +231,7 @@ export default function OwnerDashboard() {
   const { stats, businessName, recentActivity, loading } = useOwnerDashboard()
 
   return (
-    <div className="p-6 max-w-5xl space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-semibold">
           {greeting()}{businessName ? `, ${businessName}` : ''}

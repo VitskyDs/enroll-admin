@@ -233,7 +233,7 @@ export default function OwnerSettings() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-6 max-w-2xl space-y-6">
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
         <Skeleton className="h-7 w-40" />
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="space-y-1.5">
@@ -246,7 +246,7 @@ export default function OwnerSettings() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl space-y-6">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
       <h1 className="text-xl font-semibold">Business profile</h1>
 
       {/* Basic info */}

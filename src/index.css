@@ -3,6 +3,11 @@
 @import "shadcn/tailwind.css";
 @import "@vitskyds/enroll-ui/styles";
 
+/* Scan the design-system package so Tailwind generates the utility classes its
+   components rely on (e.g. bg-button-primary-bg-default). node_modules is
+   ignored by default, so this opt-in is required. */
+@source "../node_modules/@vitskyds/enroll-ui/dist";
+
 @custom-variant dark (&:is(.dark *));
 
 html, body, #root {

@@ -412,7 +412,7 @@ export default function OwnerProgram() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 max-w-2xl">
+      <div className="p-6 space-y-4 max-w-2xl mx-auto">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="rounded-lg border h-32 animate-pulse bg-muted/30" />
         ))}
@@ -421,7 +421,7 @@ export default function OwnerProgram() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-2xl">
+    <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
       <h1 className="text-xl font-semibold">Program settings</h1>
 
       {/* Earn rules */}

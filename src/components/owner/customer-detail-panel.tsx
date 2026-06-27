@@ -4,7 +4,16 @@ import { supabase } from '@/lib/supabase'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
+import { Drawer } from '@/components/owner/drawer'
 import type { OwnerCustomer } from '@/hooks/useOwnerCustomers'
+
+// Retains the last non-null customer so its content stays visible while the
+// drawer animates out after `customer` is cleared.
+function useRetainedCustomer(customer: OwnerCustomer | null) {
+  const [shown, setShown] = useState(customer)
+  useEffect(() => { if (customer) setShown(customer) }, [customer])
+  return shown
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -378,7 +387,7 @@ function PanelContent({
   )
 }
 
-// ─── Desktop side panel ───────────────────────────────────────────────────────
+// ─── Desktop right drawer ─────────────────────────────────────────────────────
 
 export function CustomerDetailPanel({
   customer,
@@ -389,11 +398,17 @@ export function CustomerDetailPanel({
   businessId: string | null
   onClose: () => void
 }) {
-  if (!customer || !businessId) return null
+  const shown = useRetainedCustomer(customer)
   return (
-    <aside className="hidden md:flex flex-col w-[360px] shrink-0 border-l bg-background overflow-hidden">
-      <PanelContent customer={customer} businessId={businessId} onClose={onClose} />
-    </aside>
+    <Drawer
+      open={!!customer && !!businessId}
+      onClose={onClose}
+      side="right"
+      rootClassName="hidden md:block"
+      className="w-full max-w-md border-l flex flex-col overflow-hidden"
+    >
+      {shown && businessId && <PanelContent customer={shown} businessId={businessId} onClose={onClose} />}
+    </Drawer>
   )
 }
 
@@ -408,19 +423,19 @@ export function CustomerDetailDrawer({
   businessId: string | null
   onClose: () => void
 }) {
-  if (!customer || !businessId) return null
+  const shown = useRetainedCustomer(customer)
   return (
-    <div className="fixed inset-0 z-50 md:hidden" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50" />
-      <div
-        className="absolute inset-x-0 bottom-0 bg-background rounded-t-xl border-t max-h-[85vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="mx-auto w-12 h-1.5 rounded-full bg-muted mt-3 mb-1 shrink-0" />
-        <div className="flex-1 overflow-hidden">
-          <PanelContent customer={customer} businessId={businessId} onClose={onClose} />
-        </div>
+    <Drawer
+      open={!!customer && !!businessId}
+      onClose={onClose}
+      side="bottom"
+      rootClassName="md:hidden"
+      className="rounded-t-xl border-t max-h-[85vh] flex flex-col"
+    >
+      <div className="mx-auto w-12 h-1.5 rounded-full bg-muted mt-3 mb-1 shrink-0" />
+      <div className="flex-1 overflow-hidden">
+        {shown && businessId && <PanelContent customer={shown} businessId={businessId} onClose={onClose} />}
       </div>
-    </div>
+    </Drawer>
   )
 }
