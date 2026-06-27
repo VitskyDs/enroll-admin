@@ -5,8 +5,8 @@ const isEmailAuthEnabled =
   import.meta.env.VITE_ENABLE_EMAIL_AUTH === 'true' ||
   import.meta.env.DEV ||
   (typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app'))
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '@vitskyds/enroll-ui'
+import { Input } from '@vitskyds/enroll-ui'
 
 export default function SignIn() {
   const [loading, setLoading] = useState(false)

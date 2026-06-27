@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X, Check, Gift, CreditCard, Star, Users, TrendingUp, TrendingDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Input } from '@vitskyds/enroll-ui'
+import { Button } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
 import type { OwnerCustomer } from '@/hooks/useOwnerCustomers'
 

@@ -4,8 +4,8 @@ import { ArrowLeft, ArrowRight, Gift, Star, Bell, CheckCheck, Clock, X } from 'l
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Button } from '@vitskyds/enroll-ui'
+import { Input } from '@vitskyds/enroll-ui'
 
 type AtRiskCustomer = {
   id: string

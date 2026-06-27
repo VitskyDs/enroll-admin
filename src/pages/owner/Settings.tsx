@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { Upload, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Input } from '@vitskyds/enroll-ui'
+import { Button } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
 
 // ─── Constants ────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button } from '@/components/ui/button'
+import { Button } from '@vitskyds/enroll-ui'
 
 const NAV_ITEMS = [
   { to: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },

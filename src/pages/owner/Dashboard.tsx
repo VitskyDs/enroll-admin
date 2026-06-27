@@ -5,7 +5,7 @@ import {
   Search, UserPlus, Sparkles, Send, ChevronRight, Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
+import { Input } from '@vitskyds/enroll-ui'
 import { useOwnerDashboard, type RecentActivity } from '@/hooks/useOwnerDashboard'
 
 function greeting() {
