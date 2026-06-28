@@ -11,16 +11,16 @@ export function useBusiness() {
   const tenant = useTenant()
   const slug = tenant ?? DEFAULT_TENANT
 
-  useEffect(() => {
-    if (tenant) setLastTenant(tenant)
-  }, [tenant])
-
   const { data: business, loading } = useCachedQuery<Business | null>(
     'business',
     slug,
     async () => (await supabase.from('businesses').select('*').eq('slug', slug).single()).data,
     null,
   )
+
+  useEffect(() => {
+    if (business) setLastTenant(business.slug)
+  }, [business])
 
   return { business, loading }
 }

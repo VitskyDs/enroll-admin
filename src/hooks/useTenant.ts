@@ -6,7 +6,7 @@ import { useLocation, useNavigate, type NavigateOptions } from 'react-router-dom
 // tenant — those segments are never treated as a tenant slug.
 const NON_TENANT_SEGMENTS = new Set(['auth', 'join', 'owner'])
 
-const LAST_TENANT_KEY = 'lastTenant'
+const LAST_TENANT_KEY = 'lastTenantSlug'
 export const DEFAULT_TENANT = 'corner-cup'
 
 /** Active tenant slug from a pathname, or null on a global (non-tenant) route. */
@@ -31,9 +31,12 @@ export function tenantHref(tenant: string | null, path: string): string {
   return path === '/' ? `/${tenant}` : `/${tenant}${path}`
 }
 
+const SLUG_RE = /^[a-z0-9-]+$/
+
 export function getLastTenant(): string {
   if (typeof window === 'undefined') return DEFAULT_TENANT
-  return localStorage.getItem(LAST_TENANT_KEY) ?? DEFAULT_TENANT
+  const stored = localStorage.getItem(LAST_TENANT_KEY)
+  return stored && SLUG_RE.test(stored) ? stored : DEFAULT_TENANT
 }
 
 export function setLastTenant(slug: string): void {
