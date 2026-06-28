@@ -2,16 +2,25 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { takeAuthTenant, getLastTenant } from '@/hooks/useTenant'
 
 function getPostAuthDestination() {
+  // The active tenant was stashed before the OAuth redirect; fall back to the
+  // last-visited tenant if it's missing.
+  const tenant = takeAuthTenant() ?? getLastTenant()
+
   if (sessionStorage.getItem('enrollmentPending') === '1') {
     sessionStorage.removeItem('enrollmentPending')
-    return '/home?flow=enroll'
+    return `/${tenant}/home?flow=enroll`
   }
+  // Joining via a share link: return to that tenant's enroll landing.
   const pending = sessionStorage.getItem('pendingJoinSlug')
   const ref = sessionStorage.getItem('pendingJoinRef')
   if (ref) sessionStorage.removeItem('pendingJoinRef')
-  return pending ? `/join/${pending}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}` : '/home'
+  if (pending) {
+    return `/${pending}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`
+  }
+  return `/${tenant}/home`
 }
 
 export default function AuthCallback() {
@@ -23,12 +32,13 @@ export default function AuthCallback() {
     if (ran.current) return
     ran.current = true
 
+    const signInPath = `/${getLastTenant()}/sign-in`
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     const error = params.get('error')
 
     if (error) {
-      navigate('/sign-in', { replace: true })
+      navigate(signInPath, { replace: true })
       return
     }
 
@@ -40,7 +50,7 @@ export default function AuthCallback() {
     if (code) {
       // PKCE flow
       supabase.auth.exchangeCodeForSession(code).then(async ({ data, error }) => {
-        if (error) { navigate('/sign-in', { replace: true }); return }
+        if (error) { navigate(signInPath, { replace: true }); return }
         navigate(await resolveDestination(data.session.user.id), { replace: true })
       })
       return
@@ -54,7 +64,7 @@ export default function AuthCallback() {
       }
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         subscription.unsubscribe()
-        if (!session) { navigate('/sign-in', { replace: true }); return }
+        if (!session) { navigate(signInPath, { replace: true }); return }
         resolveDestination(session.user.id).then(dest => navigate(dest, { replace: true }))
       })
     })

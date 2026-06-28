@@ -10,11 +10,11 @@ import AppAdmin from './AppAdmin'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
-      <CurrencyProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <CurrencyProvider>
           <AppAdmin />
-        </BrowserRouter>
-      </CurrencyProvider>
+        </CurrencyProvider>
+      </BrowserRouter>
     </I18nextProvider>
   </StrictMode>,
 )
