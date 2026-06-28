@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -75,6 +75,9 @@ export function useOwnerDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
+
+  const refresh = useCallback(() => setRefreshToken(t => t + 1), [])
 
   useEffect(() => {
     if (!ownedBusinessId) return
@@ -234,7 +237,7 @@ export function useOwnerDashboard() {
 
     load()
     return () => { cancelled = true }
-  }, [ownedBusinessId])
+  }, [ownedBusinessId, refreshToken])
 
-  return { stats, businessName, recentActivity, loading, error }
+  return { stats, businessName, recentActivity, loading, error, refresh }
 }

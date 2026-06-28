@@ -7,6 +7,8 @@ import {
 import { cn } from '@/lib/utils'
 import { Input } from '@vitskyds/enroll-ui'
 import { useOwnerDashboard, type RecentActivity } from '@/hooks/useOwnerDashboard'
+import { useAuth } from '@/contexts/AuthContext'
+import { AwardPointsDialog } from '@/components/owner/award-points-dialog'
 
 function greeting() {
   const h = new Date().getHours()
@@ -190,29 +192,54 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
 
 const QUICK_ACTIONS = [
   { to: '/owner/customers', icon: UserPlus, title: 'Add a customer', desc: 'Register a walk-in or new member' },
-  { to: '/owner/customers', icon: Sparkles, title: 'Award points manually', desc: 'Credit a customer for a visit' },
+  { to: null, icon: Sparkles, title: 'Award points manually', desc: 'Credit a customer for a visit' },
   { to: '/owner/catch-up', icon: Send, title: 'Send a catch-up message', desc: 'Re-engage lapsed customers' },
 ]
 
-function QuickActionsCard({ atRiskCount, loading }: { atRiskCount: number; loading: boolean }) {
+function QuickActionsCard({
+  atRiskCount,
+  loading,
+  onAwardPoints,
+}: {
+  atRiskCount: number
+  loading: boolean
+  onAwardPoints: () => void
+}) {
   return (
     <div className="rounded-lg border bg-card flex flex-col">
       <div className="border-b px-5 py-3">
         <span className="text-sm font-medium">Quick actions</span>
       </div>
       <ul className="divide-y">
-        {QUICK_ACTIONS.map(({ to, icon: Icon, title, desc }) => (
-          <li key={title}>
-            <Link to={to} className="flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group">
+        {QUICK_ACTIONS.map(({ to, icon: Icon, title, desc }) => {
+          const inner = (
+            <>
               <Icon size={16} className="text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{title}</p>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
               <ChevronRight size={15} className="text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </li>
-        ))}
+            </>
+          )
+          return (
+            <li key={title}>
+              {to ? (
+                <Link to={to} className="flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group">
+                  {inner}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onAwardPoints}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group text-left"
+                >
+                  {inner}
+                </button>
+              )}
+            </li>
+          )
+        })}
       </ul>
       {!loading && atRiskCount > 0 && (
         <div className="border-t bg-muted/30 px-5 py-3 rounded-b-lg">
@@ -228,7 +255,9 @@ function QuickActionsCard({ atRiskCount, loading }: { atRiskCount: number; loadi
 }
 
 export default function OwnerDashboard() {
-  const { stats, businessName, recentActivity, loading } = useOwnerDashboard()
+  const { stats, businessName, recentActivity, loading, refresh } = useOwnerDashboard()
+  const { ownedBusinessId } = useAuth()
+  const [awardOpen, setAwardOpen] = useState(false)
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -262,8 +291,21 @@ export default function OwnerDashboard() {
         <div className="lg:col-span-2">
           <RecentActivityCard items={recentActivity} loading={loading} />
         </div>
-        <QuickActionsCard atRiskCount={stats?.atRiskCount ?? 0} loading={loading} />
+        <QuickActionsCard
+          atRiskCount={stats?.atRiskCount ?? 0}
+          loading={loading}
+          onAwardPoints={() => setAwardOpen(true)}
+        />
       </div>
+
+      {ownedBusinessId && (
+        <AwardPointsDialog
+          open={awardOpen}
+          onOpenChange={setAwardOpen}
+          businessId={ownedBusinessId}
+          onSuccess={refresh}
+        />
+      )}
     </div>
   )
 }
