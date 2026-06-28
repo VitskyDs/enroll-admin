@@ -49,6 +49,8 @@ export type Product = {
   business_id: string
   name: string
   description: string | null
+  name_he: string | null
+  description_he: string | null
   price_cents: number | null
   category: string | null
   status: 'active' | 'draft' | 'inactive'

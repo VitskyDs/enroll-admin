@@ -24,6 +24,8 @@ type Product = {
   id: string
   name: string
   description: string | null
+  name_he: string | null
+  description_he: string | null
   price_cents: number
   category: string | null
   status: ProductStatus
@@ -36,6 +38,8 @@ type Product = {
 type FormDraft = {
   name: string
   description: string
+  name_he: string
+  description_he: string
   price_dollars: string
   category: string
   points_override: string
@@ -47,6 +51,8 @@ type FormDraft = {
 const EMPTY_DRAFT: FormDraft = {
   name: '',
   description: '',
+  name_he: '',
+  description_he: '',
   price_dollars: '',
   category: '',
   points_override: '',
@@ -187,6 +193,32 @@ function ProductForm({
               value={draft.description}
               onChange={e => onChange({ description: e.target.value })}
               placeholder="Optional description"
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+            />
+          </div>
+
+          {/* Hebrew name */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Hebrew name</label>
+            <Input
+              dir="rtl"
+              lang="he"
+              value={draft.name_he}
+              onChange={e => onChange({ name_he: e.target.value })}
+              placeholder="שם בעברית (אופציונלי)"
+            />
+          </div>
+
+          {/* Hebrew description */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Hebrew description</label>
+            <textarea
+              dir="rtl"
+              lang="he"
+              value={draft.description_he}
+              onChange={e => onChange({ description_he: e.target.value })}
+              placeholder="תיאור בעברית (אופציונלי)"
               rows={3}
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
@@ -368,7 +400,7 @@ export default function OwnerProducts() {
     setLoading(true)
     const { data } = await supabase
       .from('products')
-      .select('id, name, description, price_cents, category, status, sort_order, image_urls, points_override, kind')
+      .select('id, name, description, name_he, description_he, price_cents, category, status, sort_order, image_urls, points_override, kind')
       .eq('business_id', ownedBusinessId)
       .order('sort_order')
     setProducts((data ?? []) as Product[])
@@ -389,6 +421,8 @@ export default function OwnerProducts() {
     setDraft({
       name: product.name,
       description: product.description ?? '',
+      name_he: product.name_he ?? '',
+      description_he: product.description_he ?? '',
       price_dollars: (product.price_cents / 100).toFixed(2),
       category: product.category ?? '',
       points_override: product.points_override != null ? String(product.points_override) : '',
@@ -427,6 +461,8 @@ export default function OwnerProducts() {
     const payload = {
       name: draft.name.trim(),
       description: draft.description.trim() || null,
+      name_he: draft.name_he.trim() || null,
+      description_he: draft.description_he.trim() || null,
       price_cents: Math.round(Number(draft.price_dollars) * 100),
       category: draft.category.trim() || null,
       points_override: draft.points_override !== '' ? Number(draft.points_override) : null,
