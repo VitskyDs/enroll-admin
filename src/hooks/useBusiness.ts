@@ -1,16 +1,19 @@
-import { useTranslation } from 'react-i18next'
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { demoSlugForLang, DEMO_SLUG_HE } from '@/lib/demo'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
+import { useTenant, setLastTenant, DEFAULT_TENANT } from '@/hooks/useTenant'
 import type { Business } from '@/types'
 
-// When VITE_BUSINESS_SLUG is explicitly configured, use it for all languages
-// except Hebrew, which always maps to the Hebrew demo business.
-const SLUG = import.meta.env.VITE_BUSINESS_SLUG as string | undefined
-
+// The active business is resolved from the URL tenant slug (`/:tenant/...`).
+// Language only changes copy — it no longer switches the active café. On global
+// routes (no tenant in the URL) we fall back to the default tenant.
 export function useBusiness() {
-  const { i18n } = useTranslation()
-  const slug = i18n.language === 'he' ? DEMO_SLUG_HE : (SLUG ?? demoSlugForLang(i18n.language))
+  const tenant = useTenant()
+  const slug = tenant ?? DEFAULT_TENANT
+
+  useEffect(() => {
+    if (tenant) setLastTenant(tenant)
+  }, [tenant])
 
   const { data: business, loading } = useCachedQuery<Business | null>(
     'business',

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { useTenant, rememberAuthTenant } from '@/hooks/useTenant'
 const isEmailAuthEnabled =
   import.meta.env.VITE_ENABLE_EMAIL_AUTH === 'true' ||
   import.meta.env.DEV ||
@@ -11,9 +12,11 @@ import { Input } from '@vitskyds/enroll-ui'
 export default function SignIn() {
   const [loading, setLoading] = useState(false)
   const { t } = useTranslation()
+  const tenant = useTenant()
 
   async function handleGoogleSignIn() {
     setLoading(true)
+    rememberAuthTenant(tenant)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -23,7 +26,7 @@ export default function SignIn() {
   }
 
   return (
-    <div className="flex flex-col h-full px-6">
+    <div className="flex flex-col h-full px-6 max-w-[400px] mx-auto w-full">
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-2">
           <span className="text-primary-foreground text-2xl font-bold select-none">E</span>
