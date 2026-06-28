@@ -26,7 +26,7 @@ export default function SignIn() {
   }
 
   return (
-    <div className="flex flex-col h-full px-6">
+    <div className="flex flex-col h-full px-6 max-w-[400px] mx-auto w-full">
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-2">
           <span className="text-primary-foreground text-2xl font-bold select-none">E</span>
