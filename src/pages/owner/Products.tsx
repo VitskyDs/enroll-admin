@@ -434,13 +434,13 @@ export default function OwnerProducts() {
     setDrawerOpen(true)
   }
 
-  async function uploadImage(file: File): Promise<string | null> {
+  async function uploadImage(file: File): Promise<{ url: string } | { error: string }> {
     const ext = file.name.split('.').pop()
     const path = `${ownedBusinessId}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('product-images').upload(path, file)
-    if (error) return null
+    if (error) return { error: error.message }
     const { data } = supabase.storage.from('product-images').getPublicUrl(path)
-    return data.publicUrl
+    return { url: data.publicUrl }
   }
 
   async function handleSave() {
@@ -454,8 +454,13 @@ export default function OwnerProducts() {
 
     let imageUrls: string[] | undefined
     if (draft.imageFile) {
-      const url = await uploadImage(draft.imageFile)
-      if (url) imageUrls = [url]
+      const result = await uploadImage(draft.imageFile)
+      if ('error' in result) {
+        setFormError(`Image upload failed: ${result.error}`)
+        setSaving(false)
+        return
+      }
+      imageUrls = [result.url]
     }
 
     const payload = {

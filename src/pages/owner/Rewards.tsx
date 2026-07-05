@@ -275,13 +275,13 @@ export default function OwnerRewards() {
     setDrawerOpen(true)
   }
 
-  async function uploadImage(file: File): Promise<string | null> {
+  async function uploadImage(file: File): Promise<{ url: string } | { error: string }> {
     const ext = file.name.split('.').pop()
     const path = `${ownedBusinessId}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('reward-images').upload(path, file)
-    if (error) return null
+    if (error) return { error: error.message }
     const { data } = supabase.storage.from('reward-images').getPublicUrl(path)
-    return data.publicUrl
+    return { url: data.publicUrl }
   }
 
   async function handleSave() {
@@ -295,8 +295,13 @@ export default function OwnerRewards() {
 
     let imageUrl: string | undefined
     if (draft.imageFile) {
-      const url = await uploadImage(draft.imageFile)
-      if (url) imageUrl = url
+      const result = await uploadImage(draft.imageFile)
+      if ('error' in result) {
+        setFormError(`Image upload failed: ${result.error}`)
+        setSaving(false)
+        return
+      }
+      imageUrl = result.url
     }
 
     const payload = {
