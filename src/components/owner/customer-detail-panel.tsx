@@ -34,7 +34,9 @@ type Referral = {
 type PanelData = {
   transactions: Transaction[]
   referrals: Referral[]
+  punchCardEnabled: boolean
   punchTarget: number | null
+  punchRewardName: string | null
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -138,7 +140,7 @@ function PanelContent({
         .order('created_at', { ascending: false }),
       supabase
         .from('loyalty_programs')
-        .select('punch_card_target')
+        .select('punch_card_enabled, punch_card_target, punch_card_reward_id')
         .eq('business_id', businessId)
         .maybeSingle(),
     ])
@@ -164,10 +166,17 @@ function PanelContent({
       referee: r.referee_customer_id ? (refereeMap[r.referee_customer_id] ?? null) : null,
     }))
 
+    const rewardId = progRes.data?.punch_card_reward_id ?? null
+    const punchRewardName = rewardId
+      ? (await supabase.from('rewards').select('name').eq('id', rewardId).single()).data?.name ?? null
+      : null
+
     setData({
       transactions: (txRes.data ?? []) as Transaction[],
       referrals,
+      punchCardEnabled: progRes.data?.punch_card_enabled ?? false,
       punchTarget: progRes.data?.punch_card_target ?? null,
+      punchRewardName,
     })
     setLoading(false)
   }, [customer.id, businessId])
@@ -265,7 +274,7 @@ function PanelContent({
         ) : (
           <>
             {/* Punch card */}
-            {data?.punchTarget != null && data.punchTarget > 0 && (
+            {data?.punchCardEnabled && data.punchTarget != null && data.punchTarget > 0 && (
               <div className="px-5 py-4 border-b">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium flex items-center gap-1.5">
@@ -273,10 +282,10 @@ function PanelContent({
                     Punch card
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {customer.punch_card_count} / {data.punchTarget}
+                    {customer.punch_card_count} / {data.punchTarget} punches
                   </span>
                 </div>
-                <div className="flex gap-1 flex-wrap">
+                <div className="flex gap-1 flex-wrap mb-2">
                   {Array.from({ length: data.punchTarget }).map((_, i) => (
                     <div
                       key={i}
@@ -289,6 +298,11 @@ function PanelContent({
                     />
                   ))}
                 </div>
+                {data.punchRewardName && (
+                  <p className="text-xs text-muted-foreground">
+                    Reward: {data.punchRewardName}
+                  </p>
+                )}
               </div>
             )}
 

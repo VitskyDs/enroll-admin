@@ -52,4 +52,21 @@ test.describe('customer detail panel (requires owner auth + customers)', () => {
     await page.locator('aside button').first().click()
     await expect(page.getByText('Gift points')).not.toBeVisible()
   })
+
+  // TASK-84 — requires a program with punch_card_enabled = true
+  test('panel shows Punch card section with count, target and reward name when enabled (TASK-84 AC#1, #2, #3)', async ({ page }) => {
+    await page.goto('/owner/customers')
+    await page.locator('table tbody tr').first().click()
+    await expect(page.getByText('Punch card', { exact: true })).toBeVisible()
+    await expect(page.getByText(/\d+ \/ \d+ punches/)).toBeVisible()
+    await expect(page.getByText(/^Reward: /)).toBeVisible()
+  })
+
+  // TASK-84 — requires a program with punch_card_enabled = false
+  test('panel omits Punch card section when disabled (TASK-84 AC#4)', async ({ page }) => {
+    await page.goto('/owner/customers')
+    await page.locator('table tbody tr').first().click()
+    await expect(page.getByText('Gift points')).toBeVisible()
+    await expect(page.getByText('Punch card', { exact: true })).not.toBeVisible()
+  })
 })
