@@ -52,6 +52,25 @@ test.describe('business profile settings (requires owner auth)', () => {
     await expect(page.locator('input[type="color"]')).toBeVisible()
   })
 
+  // TASK-93
+  test('shows Store currency section with Not set / USD / ILS options (TASK-93 AC#4)', async ({ page }) => {
+    await page.goto('/owner/settings')
+    await expect(page.getByText('Store currency')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Not set' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '$ USD' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '₪ ILS' })).toBeVisible()
+  })
+
+  // TASK-93
+  test('selecting a currency and saving updates businesses.currency (TASK-93 AC#4)', async ({ page }) => {
+    await page.goto('/owner/settings')
+    await page.getByRole('button', { name: '₪ ILS' }).click()
+    await page.getByRole('button', { name: /save changes/i }).click()
+    await expect(page.getByText('Settings saved')).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole('button', { name: '₪ ILS' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   test('shows validation error when name is cleared and saved (AC#1)', async ({ page }) => {
     await page.goto('/owner/settings')
     await page.getByLabel(/business name/i).fill('')

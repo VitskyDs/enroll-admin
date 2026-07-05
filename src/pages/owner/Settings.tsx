@@ -120,6 +120,7 @@ export default function OwnerSettings() {
   const [address, setAddress] = useState('')
   const [hours, setHours] = useState('')
   const [brandColor, setBrandColor] = useState('#000000')
+  const [currency, setCurrency] = useState<'' | 'usd' | 'ils'>('')
 
   // Image state
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -131,7 +132,7 @@ export default function OwnerSettings() {
     if (!ownedBusinessId) return
     supabase
       .from('businesses')
-      .select('name, slug, tagline, industry, address, hours, brand_color, logo_url, cover_image_url')
+      .select('name, slug, tagline, industry, address, hours, brand_color, logo_url, cover_image_url, currency')
       .eq('id', ownedBusinessId)
       .single()
       .then(({ data }) => {
@@ -143,6 +144,7 @@ export default function OwnerSettings() {
         setAddress(data.address ?? '')
         setHours(data.hours ?? '')
         setBrandColor(data.brand_color ?? '#000000')
+        setCurrency(data.currency === 'usd' || data.currency === 'ils' ? data.currency : '')
         setLogoPreview(data.logo_url ?? null)
         setCoverPreview(data.cover_image_url ?? null)
         setLoading(false)
@@ -214,6 +216,7 @@ export default function OwnerSettings() {
       address: address.trim() || null,
       hours: hours.trim() || null,
       brand_color: brandColor,
+      currency: currency || null,
       ...(logoUrl ? { logo_url: logoUrl } : {}),
       ...(coverUrl ? { cover_image_url: coverUrl } : {}),
     }
@@ -329,6 +332,40 @@ export default function OwnerSettings() {
             preview={coverPreview}
             onFile={f => { setCoverFile(f); setCoverPreview(URL.createObjectURL(f)) }}
           />
+        </div>
+      </section>
+
+      {/* Store currency */}
+      <section className="rounded-lg border bg-card">
+        <div className="px-5 py-4 border-b">
+          <h2 className="font-semibold text-sm">Store currency</h2>
+        </div>
+        <div className="px-5 py-4">
+          <Field
+            label="Currency"
+            hint="Locking a currency hides the switcher for customers — they'll always see this currency."
+          >
+            <div className="flex items-center gap-1 rounded-full bg-secondary p-1 w-fit">
+              {([
+                { value: '', label: 'Not set' },
+                { value: 'usd', label: '$ USD' },
+                { value: 'ils', label: '₪ ILS' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setCurrency(opt.value)}
+                  aria-pressed={currency === opt.value}
+                  className={cn(
+                    'px-3 py-1 rounded-full text-sm font-medium transition-colors',
+                    currency === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </Field>
         </div>
       </section>
 

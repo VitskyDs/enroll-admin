@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBusiness } from '@/hooks/useBusiness'
 import type { Currency } from '@/lib/utils'
@@ -9,11 +9,13 @@ export const CURRENCY_STORAGE_KEY = 'enroll-currency'
 interface CurrencyContextValue {
   currency: Currency
   setCurrency: (c: Currency) => void
+  currencyLocked: boolean
 }
 
 const CurrencyContext = createContext<CurrencyContextValue>({
   currency: 'usd',
   setCurrency: () => {},
+  currencyLocked: false,
 })
 
 function readOverride(): Currency | null {
@@ -27,19 +29,30 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   // A manual choice in Profile overrides; otherwise the active business decides.
   const [override, setOverride] = useState<Currency | null>(readOverride)
 
+  const currencyLocked = business?.currency === 'ils' || business?.currency === 'usd'
+
+  // The business currency is fixed — any prior manual override is stale and must be dropped.
+  useEffect(() => {
+    if (currencyLocked && override !== null) {
+      setOverride(null)
+      localStorage.removeItem(CURRENCY_STORAGE_KEY)
+    }
+  }, [currencyLocked, override])
+
   const businessCurrency: Currency =
     business?.currency === 'ils' ? 'ils' :
     business?.currency === 'usd' ? 'usd' :
     i18n.language === 'he' ? 'ils' : 'usd'
-  const currency = override ?? businessCurrency
+  const currency = currencyLocked ? businessCurrency : override ?? businessCurrency
 
   function setCurrency(next: Currency) {
+    if (currencyLocked) return
     setOverride(next)
     localStorage.setItem(CURRENCY_STORAGE_KEY, next)
   }
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, currencyLocked }}>
       {children}
     </CurrencyContext.Provider>
   )
