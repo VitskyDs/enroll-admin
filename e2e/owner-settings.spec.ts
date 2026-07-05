@@ -40,6 +40,26 @@ test.describe('business profile settings (requires owner auth)', () => {
     await expect(slugInput).toHaveValue('myslug')
   })
 
+  // TASK-103 — handleSave() previously never re-checked uniqueness, so saving a taken
+  // slug without blurring the field first went straight to the DB and could surface a
+  // raw Postgres error instead of the friendly message. Mocks the uniqueness query so
+  // the taken slug is caught on save alone, with no blur event fired.
+  test('saving a taken slug shows the friendly error and blocks the save, even without blurring first (TASK-103 AC#1, #2)', async ({ page }) => {
+    await page.route('**/rest/v1/businesses?select=id*', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'some-other-business-id' }),
+      }),
+    )
+    await page.goto('/owner/settings')
+    const slugInput = page.getByLabel(/slug/i)
+    await slugInput.fill('taken-slug')
+    await page.getByRole('button', { name: /save changes/i }).click()
+    await expect(page.getByText(/this slug is already taken/i)).toBeVisible()
+    await expect(page.getByText('Settings saved')).not.toBeVisible()
+  })
+
   test('shows logo and cover image upload areas (AC#4, AC#5)', async ({ page }) => {
     await page.goto('/owner/settings')
     await expect(page.getByText('Logo')).toBeVisible()
