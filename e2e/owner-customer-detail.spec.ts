@@ -31,6 +31,15 @@ test.describe('customer detail panel (requires owner auth + customers)', () => {
     await expect(page.getByText('Transaction history')).toBeVisible()
   })
 
+  // TASK-105 — point_transactions previously had no owner-SELECT RLS policy, so this
+  // section always rendered empty for owners regardless of how many transactions existed.
+  test('transaction history lists a customer\'s gift entries, not just the header (TASK-105 AC#2)', async ({ page }) => {
+    await page.goto('/owner/customers')
+    await page.locator('table tbody tr').first().click()
+    await expect(page.getByText('Transaction history')).toBeVisible()
+    await expect(page.getByText('Gift from owner').first()).toBeVisible()
+  })
+
   test('panel shows referrals section (AC#4)', async ({ page }) => {
     await page.goto('/owner/customers')
     await page.locator('table tbody tr').first().click()
