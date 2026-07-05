@@ -44,6 +44,38 @@ test.describe('customer detail panel (requires owner auth + customers)', () => {
     await expect(page.getByText(/enter a positive number/i)).toBeVisible()
   })
 
+  // TASK-96 — gift now goes through the gift_points RPC instead of two direct
+  // client writes, so a success updates the points balance without an RLS error.
+  test('gifting points updates the balance and clears the form (TASK-96 AC#1, #2)', async ({ page }) => {
+    await page.goto('/owner/customers')
+    await page.locator('table tbody tr').first().click()
+    const pointsValue = page.locator('text=Points').locator('xpath=following-sibling::*').first()
+    const before = await pointsValue.textContent()
+
+    await page.getByPlaceholder('Amount').fill('5')
+    await page.getByRole('button', { name: 'Gift' }).click()
+
+    await expect(page.getByPlaceholder('Amount')).toHaveValue('')
+    await expect(pointsValue).not.toHaveText(before ?? '')
+  })
+
+  // TASK-96 AC#3 — the gift_points RPC rejects a customer the owner doesn't own;
+  // surfaced to the UI as the giftError message rather than a silent failure.
+  test('gifting points surfaces an authorization error from the RPC (TASK-96 AC#3)', async ({ page }) => {
+    await page.route('**/rest/v1/rpc/gift_points', route =>
+      route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authorized to gift points to this customer' }),
+      }),
+    )
+    await page.goto('/owner/customers')
+    await page.locator('table tbody tr').first().click()
+    await page.getByPlaceholder('Amount').fill('5')
+    await page.getByRole('button', { name: 'Gift' }).click()
+    await expect(page.getByText(/not authorized to gift points/i)).toBeVisible()
+  })
+
   test('panel closes when X is clicked (AC#8)', async ({ page }) => {
     await page.goto('/owner/customers')
     await page.locator('table tbody tr').first().click()
