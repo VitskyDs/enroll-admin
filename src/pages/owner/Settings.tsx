@@ -153,26 +153,31 @@ export default function OwnerSettings() {
 
   // ── Slug validation ────────────────────────────────────────────────────────
 
-  async function validateSlug(value: string) {
-    if (!value) return
-    const errs = { ...errors }
-    if (!SLUG_RE.test(value)) {
-      errs.slug = 'Slug must be lowercase letters, numbers, and hyphens only.'
-      setErrors(errs)
-      return
-    }
-    // Uniqueness check — exclude own business
+  // Uniqueness check — exclude own business. Shared by the onBlur check and handleSave
+  // so a taken slug is always caught, even if the field is edited again after blurring.
+  async function isSlugTaken(value: string): Promise<boolean> {
     const { data } = await supabase
       .from('businesses')
       .select('id')
       .eq('slug', value)
       .neq('id', ownedBusinessId!)
       .maybeSingle()
-    if (data) {
-      setErrors(prev => ({ ...prev, slug: 'This slug is already taken.' }))
-    } else {
-      setErrors(prev => { const n = { ...prev }; delete n.slug; return n })
+    return !!data
+  }
+
+  async function validateSlug(value: string) {
+    if (!value) return
+    if (!SLUG_RE.test(value)) {
+      setErrors(prev => ({ ...prev, slug: 'Slug must be lowercase letters, numbers, and hyphens only.' }))
+      return
     }
+    const taken = await isSlugTaken(value)
+    setErrors(prev => {
+      const n = { ...prev }
+      if (taken) n.slug = 'This slug is already taken.'
+      else delete n.slug
+      return n
+    })
   }
 
   // ── Image upload ───────────────────────────────────────────────────────────
@@ -188,11 +193,17 @@ export default function OwnerSettings() {
   // ── Save ───────────────────────────────────────────────────────────────────
 
   async function handleSave() {
+    const trimmedSlug = slug.trim()
     const errs: Record<string, string> = {}
     if (!name.trim()) errs.name = 'Business name is required.'
-    if (!slug.trim()) errs.slug = 'Slug is required.'
-    else if (!SLUG_RE.test(slug)) errs.slug = 'Slug must be lowercase letters, numbers, and hyphens only.'
+    if (!trimmedSlug) errs.slug = 'Slug is required.'
+    else if (!SLUG_RE.test(trimmedSlug)) errs.slug = 'Slug must be lowercase letters, numbers, and hyphens only.'
     if (Object.keys(errs).length) { setErrors(errs); return }
+
+    if (await isSlugTaken(trimmedSlug)) {
+      setErrors(prev => ({ ...prev, slug: 'This slug is already taken.' }))
+      return
+    }
 
     setSaving(true)
 
