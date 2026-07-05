@@ -190,19 +190,11 @@ function PanelContent({
     if (!amount || amount < 1) { setGiftError('Enter a positive number of points.'); return }
     setGifting(true)
 
-    const { error: txErr } = await supabase.from('point_transactions').insert({
-      customer_id: customer.id,
-      business_id: businessId,
-      points: amount,
-      reason: 'manual_gift',
+    const { error: giftErr } = await supabase.rpc('gift_points', {
+      p_customer_id: customer.id,
+      p_amount: amount,
     })
-    if (txErr) { setGiftError(txErr.message); setGifting(false); return }
-
-    const { error: ptErr } = await supabase
-      .from('customers')
-      .update({ points: localPoints + amount })
-      .eq('id', customer.id)
-    if (ptErr) { setGiftError(ptErr.message); setGifting(false); return }
+    if (giftErr) { setGiftError(giftErr.message); setGifting(false); return }
 
     setLocalPoints(p => p + amount)
     setGiftAmount('')
