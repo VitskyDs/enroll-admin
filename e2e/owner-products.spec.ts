@@ -65,4 +65,47 @@ test.describe('products management structure (requires owner auth)', () => {
     await page.goto('/owner/products')
     await expect(page.locator('button[title=""]').first()).toBeVisible()
   })
+
+  // TASK-98 — the product-images bucket didn't exist, so uploads always failed silently
+  // and the product saved with no image. Migration 20260705180500 created the bucket.
+  const TINY_PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  )
+
+  test('uploading an image on create persists it and shows on reopening the edit drawer (TASK-98 AC#1, #2)', async ({ page }) => {
+    await page.goto('/owner/products')
+    await page.getByRole('button', { name: /add product/i }).click()
+    await page.getByLabel(/name/i).fill('E2E Image Product')
+    await page.getByLabel(/price/i).fill('5.00')
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'test.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    })
+    await page.getByRole('button', { name: /add product/i }).last().click()
+    await expect(page.getByText('E2E Image Product')).toBeVisible()
+
+    await page.getByText('E2E Image Product').click()
+    await expect(page.getByAltText('E2E Image Product')).toBeVisible()
+  })
+
+  // TASK-98 AC#3 — a failed storage upload must surface an error, not save silently with no image.
+  test('surfaces an error and does not save when the image upload fails (TASK-98 AC#3)', async ({ page }) => {
+    await page.route('**/storage/v1/object/product-images/**', route =>
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'Bucket not found' }) }),
+    )
+    await page.goto('/owner/products')
+    await page.getByRole('button', { name: /add product/i }).click()
+    await page.getByLabel(/name/i).fill('Should Not Save')
+    await page.getByLabel(/price/i).fill('5.00')
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'test.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    })
+    await page.getByRole('button', { name: /add product/i }).last().click()
+    await expect(page.getByText(/image upload failed/i)).toBeVisible()
+    await expect(page.getByText('Should Not Save')).not.toBeVisible()
+  })
 })

@@ -63,4 +63,47 @@ test.describe('rewards catalog structure (requires owner auth)', () => {
     // Points cost is rendered as "N pts"
     await expect(page.getByText(/pts/i).first()).toBeVisible()
   })
+
+  // TASK-100 — the reward-images bucket didn't exist, so uploads always failed silently
+  // and the reward saved with no image. Migration 20260705180500 created the bucket.
+  const TINY_PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    'base64',
+  )
+
+  test('uploading an image on create persists it and shows on reopening the edit drawer (TASK-100 AC#1)', async ({ page }) => {
+    await page.goto('/owner/rewards')
+    await page.getByRole('button', { name: /add reward/i }).click()
+    await page.getByLabel(/name/i).fill('E2E Image Reward')
+    await page.getByLabel(/points cost/i).fill('10')
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'test.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    })
+    await page.getByRole('button', { name: /add reward/i }).last().click()
+    await expect(page.getByText('E2E Image Reward')).toBeVisible()
+
+    await page.getByText('E2E Image Reward').click()
+    await expect(page.getByAltText('E2E Image Reward')).toBeVisible()
+  })
+
+  // TASK-100 AC#2 — a failed storage upload must surface an error, not save silently with no image.
+  test('surfaces an error and does not save when the image upload fails (TASK-100 AC#2)', async ({ page }) => {
+    await page.route('**/storage/v1/object/reward-images/**', route =>
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'Bucket not found' }) }),
+    )
+    await page.goto('/owner/rewards')
+    await page.getByRole('button', { name: /add reward/i }).click()
+    await page.getByLabel(/name/i).fill('Should Not Save')
+    await page.getByLabel(/points cost/i).fill('10')
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'test.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    })
+    await page.getByRole('button', { name: /add reward/i }).last().click()
+    await expect(page.getByText(/image upload failed/i)).toBeVisible()
+    await expect(page.getByText('Should Not Save')).not.toBeVisible()
+  })
 })
