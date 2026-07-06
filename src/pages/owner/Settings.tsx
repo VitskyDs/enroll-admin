@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Upload, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -115,6 +115,8 @@ export default function OwnerSettings() {
   // Form state
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  const [originalSlug, setOriginalSlug] = useState('')
+  const [slugAvailable, setSlugAvailable] = useState(false)
   const [tagline, setTagline] = useState('')
   const [industry, setIndustry] = useState('')
   const [address, setAddress] = useState('')
@@ -139,6 +141,7 @@ export default function OwnerSettings() {
         if (!data) return
         setName(data.name ?? '')
         setSlug(data.slug ?? '')
+        setOriginalSlug(data.slug ?? '')
         setTagline(data.tagline ?? '')
         setIndustry(data.industry ?? '')
         setAddress(data.address ?? '')
@@ -153,9 +156,9 @@ export default function OwnerSettings() {
 
   // ── Slug validation ────────────────────────────────────────────────────────
 
-  // Uniqueness check — exclude own business. Shared by the onBlur check and handleSave
-  // so a taken slug is always caught, even if the field is edited again after blurring.
-  async function isSlugTaken(value: string): Promise<boolean> {
+  // Uniqueness check — exclude own business. Shared by the live-typing check below
+  // and handleSave, so a taken slug is always caught regardless of UI timing.
+  const isSlugTaken = useCallback(async (value: string): Promise<boolean> => {
     const { data } = await supabase
       .from('businesses')
       .select('id')
@@ -163,22 +166,37 @@ export default function OwnerSettings() {
       .neq('id', ownedBusinessId!)
       .maybeSingle()
     return !!data
-  }
+  }, [ownedBusinessId])
 
-  async function validateSlug(value: string) {
-    if (!value) return
-    if (!SLUG_RE.test(value)) {
-      setErrors(prev => ({ ...prev, slug: 'Slug must be lowercase letters, numbers, and hyphens only.' }))
-      return
-    }
-    const taken = await isSlugTaken(value)
+  // Called from the slug input's onChange (an event handler, not an effect) so format
+  // errors and the revert-when-cleared behavior apply the instant the owner types.
+  function handleSlugChange(rawValue: string) {
+    const value = rawValue.toLowerCase()
+    const next = value === '' ? originalSlug : value
+    setSlug(next)
+    setSlugAvailable(false)
     setErrors(prev => {
-      const n = { ...prev }
-      if (taken) n.slug = 'This slug is already taken.'
-      else delete n.slug
-      return n
+      if (next === originalSlug) { if (!prev.slug) return prev; const n = { ...prev }; delete n.slug; return n }
+      if (!SLUG_RE.test(next)) return { ...prev, slug: 'Slug must be lowercase letters, numbers, and hyphens only.' }
+      if (!prev.slug) return prev
+      const n = { ...prev }; delete n.slug; return n
     })
   }
+
+  // Debounces the availability check against the DB once the slug has changed and
+  // passes the format check — the synchronous cases above are handled in the onChange.
+  useEffect(() => {
+    if (!ownedBusinessId || slug === originalSlug || !SLUG_RE.test(slug)) return
+    const handle = setTimeout(async () => {
+      const taken = await isSlugTaken(slug)
+      setSlugAvailable(!taken)
+      setErrors(prev => {
+        if (!taken) { if (!prev.slug) return prev; const n = { ...prev }; delete n.slug; return n }
+        return { ...prev, slug: 'This slug is already taken.' }
+      })
+    }, 400)
+    return () => clearTimeout(handle)
+  }, [slug, originalSlug, ownedBusinessId, isSlugTaken])
 
   // ── Image upload ───────────────────────────────────────────────────────────
 
@@ -240,6 +258,8 @@ export default function OwnerSettings() {
     setSaving(false)
     if (error) { setErrors({ save: error.message }); return }
 
+    setOriginalSlug(trimmedSlug)
+    setSlugAvailable(false)
     setLogoFile(null)
     setCoverFile(null)
     setToast('Settings saved')
@@ -283,12 +303,17 @@ export default function OwnerSettings() {
           >
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground shrink-0">enroll.app/join/</span>
-              <Input
-                value={slug}
-                onChange={e => setSlug(e.target.value.toLowerCase())}
-                onBlur={e => validateSlug(e.target.value)}
-                placeholder="corner-cup"
-              />
+              <div className="relative flex-1">
+                <Input
+                  value={slug}
+                  onChange={e => handleSlugChange(e.target.value)}
+                  className={cn(errors.slug && 'border-destructive focus-visible:ring-destructive')}
+                  placeholder="corner-cup"
+                />
+                {slugAvailable && (
+                  <Check size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600" />
+                )}
+              </div>
             </div>
           </Field>
           <Field label="Tagline">
