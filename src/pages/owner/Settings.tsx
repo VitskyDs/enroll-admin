@@ -311,7 +311,12 @@ export default function OwnerSettings() {
                   placeholder="corner-cup"
                 />
                 {slugAvailable && (
-                  <Check size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600" />
+                  <Check
+                    size={14}
+                    role="img"
+                    aria-label="Slug is available"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600"
+                  />
                 )}
               </div>
             </div>

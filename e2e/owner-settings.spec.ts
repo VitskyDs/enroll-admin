@@ -40,6 +40,41 @@ test.describe('business profile settings (requires owner auth)', () => {
     await expect(slugInput).toHaveValue('myslug')
   })
 
+  // TASK-111 — clearing the slug field used to leave it empty (blocked on save with
+  // "Slug is required"); it should instead snap back to the originally-saved value.
+  test('clearing the slug reverts it to the originally-saved value (TASK-111 AC#1)', async ({ page }) => {
+    await page.goto('/owner/settings')
+    const slugInput = page.getByLabel(/slug/i)
+    const original = await slugInput.inputValue()
+    await slugInput.fill('some-other-slug')
+    await slugInput.fill('')
+    await expect(slugInput).toHaveValue(original)
+  })
+
+  // TASK-111 — typing a new, available slug should live-validate (debounced) and show
+  // a green checkmark, without needing to blur or click Save first.
+  test('typing a new available slug shows a checkmark, no error (TASK-111 AC#2, #4)', async ({ page }) => {
+    await page.route('**/rest/v1/businesses?select=id*', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }),
+    )
+    await page.goto('/owner/settings')
+    await page.getByLabel(/slug/i).fill('brand-new-available-slug')
+    await expect(page.getByLabel('Slug is available')).toBeVisible()
+    await expect(page.getByText(/already taken/i)).not.toBeVisible()
+  })
+
+  // TASK-111 — typing a taken slug should show the error state and checkmark live,
+  // before any blur or save — not just when Save is clicked (that's TASK-103's test below).
+  test('typing a taken slug shows the error state live, no checkmark (TASK-111 AC#3)', async ({ page }) => {
+    await page.route('**/rest/v1/businesses?select=id*', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'some-other-business-id' }) }),
+    )
+    await page.goto('/owner/settings')
+    await page.getByLabel(/slug/i).fill('taken-live-slug')
+    await expect(page.getByText(/this slug is already taken/i)).toBeVisible()
+    await expect(page.getByLabel('Slug is available')).not.toBeVisible()
+  })
+
   // TASK-103 — handleSave() previously never re-checked uniqueness, so saving a taken
   // slug without blurring the field first went straight to the DB and could surface a
   // raw Postgres error instead of the friendly message. Mocks the uniqueness query so
