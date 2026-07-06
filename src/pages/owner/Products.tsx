@@ -17,7 +17,7 @@ type ProductStatus = 'active' | 'draft' | 'inactive'
 // points-per-dollar earn rule. Returns null when no rate is configured.
 function derivePoints(priceDollars: number, pointsPerDollar: number | null): number | null {
   if (pointsPerDollar == null || !isFinite(priceDollars)) return null
-  return Math.round(priceDollars * pointsPerDollar)
+  return Math.floor(priceDollars * pointsPerDollar)
 }
 
 type Product = {
