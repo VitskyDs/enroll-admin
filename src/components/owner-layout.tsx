@@ -24,7 +24,7 @@ const NAV_ITEMS = [
   { to: '/owner/catch-up', label: 'Catch up', icon: HeartHandshake },
   { to: '/owner/products', label: 'Products', icon: Briefcase },
   { to: '/owner/rewards', label: 'Rewards', icon: Gift },
-  { to: '/owner/program', label: 'Program', icon: Star },
+  { to: '/owner/program', label: 'Loyalty program', icon: Star },
   { to: '/owner/settings', label: 'Settings', icon: Settings },
 ]
 
