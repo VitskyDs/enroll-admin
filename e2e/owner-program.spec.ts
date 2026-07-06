@@ -7,12 +7,12 @@ test('unauthenticated /owner/program redirects to sign-in', async ({ page }) => 
 })
 
 // Structural tests — require an authenticated owner session.
-test.describe('program settings structure (requires owner auth)', () => {
+test.describe('loyalty program view structure (requires owner auth)', () => {
   test.skip(true, 'requires owner auth fixture')
 
-  test('shows Program settings heading (AC#1)', async ({ page }) => {
+  test('shows Loyalty program heading (AC#2)', async ({ page }) => {
     await page.goto('/owner/program')
-    await expect(page.getByRole('heading', { name: /program settings/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /loyalty program/i })).toBeVisible()
   })
 
   test('shows all section headings (AC#1)', async ({ page }) => {
@@ -24,92 +24,42 @@ test.describe('program settings structure (requires owner auth)', () => {
     await expect(page.getByText('Punch card')).toBeVisible()
   })
 
-  test('earn rules has points per dollar and per visit inputs (AC#2)', async ({ page }) => {
+  test('renders program settings as read-only, with no Save buttons (AC#1)', async ({ page }) => {
     await page.goto('/owner/program')
-    await expect(page.getByLabel(/points per dollar/i)).toBeVisible()
-    await expect(page.getByLabel(/points per visit/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save' })).toHaveCount(0)
   })
 
-  test('earn rules shows validation error when both fields are blank (AC#2, AC#9)', async ({ page }) => {
+  test('renders no editable inputs on the page (AC#1)', async ({ page }) => {
     await page.goto('/owner/program')
-    await page.getByLabel(/points per dollar/i).fill('')
-    await page.getByLabel(/points per visit/i).fill('')
-    // Click the Save button for earn rules section
-    await page.locator('section').filter({ hasText: 'Earn rules' }).getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(/at least one earn rule/i)).toBeVisible()
+    await expect(page.locator('input')).toHaveCount(0)
   })
 
-  test('birthday bonus input is hidden when toggle is off (AC#7)', async ({ page }) => {
+  test('shows an Edit entry point (AC#3)', async ({ page }) => {
     await page.goto('/owner/program')
-    const toggle = page.getByRole('switch', { name: /enable birthday bonus/i })
-    // Ensure toggle is off
-    if (await toggle.getAttribute('aria-checked') === 'true') {
-      await toggle.click()
-    }
-    await expect(page.getByLabel(/bonus points/i)).not.toBeVisible()
+    await expect(page.getByRole('button', { name: /edit/i })).toBeVisible()
   })
 
-  test('birthday bonus input appears when toggle is on (AC#7)', async ({ page }) => {
+  test('earn rules displays points per dollar and per visit values (AC#1)', async ({ page }) => {
     await page.goto('/owner/program')
-    const toggle = page.getByRole('switch', { name: /enable birthday bonus/i })
-    if (await toggle.getAttribute('aria-checked') !== 'true') {
-      await toggle.click()
-    }
-    await expect(page.getByLabel(/bonus points/i)).toBeVisible()
+    await expect(page.getByText('Points per dollar')).toBeVisible()
+    await expect(page.getByText('Points per visit')).toBeVisible()
   })
 
-  test('tiers section shows tier name inputs (AC#4)', async ({ page }) => {
+  test('tiers section displays configured tiers (AC#1)', async ({ page }) => {
     await page.goto('/owner/program')
     const tiersSection = page.locator('section').filter({ hasText: 'Tiers' })
     await expect(tiersSection).toBeVisible()
   })
 
-  test('tiers shows error when a tier name is blank (AC#9)', async ({ page }) => {
+  test('referral rules displays referrer and referee point values (AC#1)', async ({ page }) => {
     await page.goto('/owner/program')
-    const tiersSection = page.locator('section').filter({ hasText: 'Tiers' })
-    // Clear the first tier name
-    await tiersSection.locator('input').first().fill('')
-    await tiersSection.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(/all tiers must have a name/i)).toBeVisible()
+    await expect(page.getByText('Referrer points')).toBeVisible()
+    await expect(page.getByText('Referee points')).toBeVisible()
   })
 
-  test('referral rules has referrer and referee point inputs (AC#5)', async ({ page }) => {
+  test('punch card displays enabled/disabled status (AC#1)', async ({ page }) => {
     await page.goto('/owner/program')
-    await expect(page.getByLabel(/referrer points/i)).toBeVisible()
-    await expect(page.getByLabel(/referee points/i)).toBeVisible()
-  })
-
-  test('punch card shows enable toggle (AC#1, AC#2)', async ({ page }) => {
-    await page.goto('/owner/program')
-    await expect(page.getByRole('switch', { name: /enable punch card/i })).toBeVisible()
-  })
-
-  test('punch card target and reward fields are hidden when toggle is off (AC#5)', async ({ page }) => {
-    await page.goto('/owner/program')
-    const toggle = page.getByRole('switch', { name: /enable punch card/i })
-    if (await toggle.getAttribute('aria-checked') === 'true') {
-      await toggle.click()
-    }
-    await expect(page.getByLabel(/target punches/i)).not.toBeVisible()
-  })
-
-  test('punch card target and reward fields appear when toggle is on (AC#3, AC#4)', async ({ page }) => {
-    await page.goto('/owner/program')
-    const toggle = page.getByRole('switch', { name: /enable punch card/i })
-    if (await toggle.getAttribute('aria-checked') !== 'true') {
-      await toggle.click()
-    }
-    await expect(page.getByLabel(/target punches/i)).toBeVisible()
-  })
-
-  test('punch card shows validation error when target is out of range (AC#3)', async ({ page }) => {
-    await page.goto('/owner/program')
-    const toggle = page.getByRole('switch', { name: /enable punch card/i })
-    if (await toggle.getAttribute('aria-checked') !== 'true') {
-      await toggle.click()
-    }
-    await page.getByLabel(/target punches/i).fill('99')
-    await page.locator('section').filter({ hasText: 'Punch card' }).getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(/between 1 and 20/i)).toBeVisible()
+    const punchSection = page.locator('section').filter({ hasText: 'Punch card' })
+    await expect(punchSection.getByText(/enabled|disabled/i)).toBeVisible()
   })
 })
