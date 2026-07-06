@@ -50,7 +50,11 @@ export function formatCurrencyUnit(currency: Currency, lang: string): string {
 // order cost, and the points actually spent are derived from that capped
 // discount (not the customer's raw balance) so redemption never overshoots
 // what the order needs.
-export function getRedemption(redeemablePoints: number, centsPerPoint: number, totalCents: number) {
+export function getRedemption(
+  redeemablePoints: number,
+  centsPerPoint: number,
+  totalCents: number
+): { discountCents: number; redeemedPoints: number } {
   const discountCents = Math.min(redeemablePoints * centsPerPoint, totalCents)
   const redeemedPoints = centsPerPoint > 0 ? Math.ceil(discountCents / centsPerPoint) : 0
   return { discountCents, redeemedPoints }
