@@ -25,15 +25,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [brandColor, setBrandColor] = useState<string | null>(null)
   const [ownedBusinessId, setOwnedBusinessId] = useState<string | null>(null)
-  const [isOwnerLoading, setIsOwnerLoading] = useState(false)
+  // Tracks which user's ownership has actually been resolved, so isOwnerLoading
+  // is derived (never one render frame stale) instead of toggled by the effect —
+  // otherwise there's a frame where `user` has updated but the loading flag
+  // hasn't caught up yet, and RequireOwner reads isOwner as false-not-loading.
+  const [ownerResolvedForUserId, setOwnerResolvedForUserId] = useState<string | null>(null)
+  const isOwnerLoading = (user?.id ?? null) !== ownerResolvedForUserId
 
   useEffect(() => {
-    if (!user) { setOwnedBusinessId(null); return }
-    setIsOwnerLoading(true)
-    supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle()
+    if (!user) { setOwnedBusinessId(null); setOwnerResolvedForUserId(null); return }
+    supabase.from('business_owners').select('business_id').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => {
-        setOwnedBusinessId(data?.id ?? null)
-        setIsOwnerLoading(false)
+        setOwnedBusinessId(data?.business_id ?? null)
+        setOwnerResolvedForUserId(user.id)
       })
   }, [user])
 
