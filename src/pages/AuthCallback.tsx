@@ -43,7 +43,7 @@ export default function AuthCallback() {
     }
 
     async function resolveDestination(userId: string) {
-      const { data } = await supabase.from('businesses').select('id').eq('owner_id', userId).maybeSingle()
+      const { data } = await supabase.from('business_owners').select('business_id').eq('user_id', userId).maybeSingle()
       return data ? '/owner/dashboard' : getPostAuthDestination()
     }
 

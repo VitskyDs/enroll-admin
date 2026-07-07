@@ -4,7 +4,7 @@ import { useLocation, useNavigate, type NavigateOptions } from 'react-router-dom
 // The consumer app is multi-tenant: the active business is the first path
 // segment (`/:tenant/...`). A few routes live at the app root instead of under a
 // tenant — those segments are never treated as a tenant slug.
-const NON_TENANT_SEGMENTS = new Set(['auth', 'join', 'owner'])
+const NON_TENANT_SEGMENTS = new Set(['auth', 'join', 'owner', 'sign-in'])
 
 const LAST_TENANT_KEY = 'lastTenantSlug'
 export const DEFAULT_TENANT = 'corner-cup'
