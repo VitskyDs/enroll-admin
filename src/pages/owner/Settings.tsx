@@ -123,6 +123,7 @@ export default function OwnerSettings() {
   const [hours, setHours] = useState('')
   const [brandColor, setBrandColor] = useState('#000000')
   const [currency, setCurrency] = useState<'' | 'usd' | 'ils'>('')
+  const [currencyLocked, setCurrencyLocked] = useState(false)
 
   // Image state
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -147,7 +148,9 @@ export default function OwnerSettings() {
         setAddress(data.address ?? '')
         setHours(data.hours ?? '')
         setBrandColor(data.brand_color ?? '#000000')
-        setCurrency(data.currency === 'usd' || data.currency === 'ils' ? data.currency : '')
+        const loadedCurrency = data.currency === 'usd' || data.currency === 'ils' ? data.currency : ''
+        setCurrency(loadedCurrency)
+        setCurrencyLocked(loadedCurrency !== '')
         setLogoPreview(data.logo_url ?? null)
         setCoverPreview(data.cover_image_url ?? null)
         setLoading(false)
@@ -262,6 +265,7 @@ export default function OwnerSettings() {
     setSlugAvailable(false)
     setLogoFile(null)
     setCoverFile(null)
+    if (currency) setCurrencyLocked(true)
     setToast('Settings saved')
   }
 
@@ -384,28 +388,38 @@ export default function OwnerSettings() {
         <div className="px-5 py-4">
           <Field
             label="Currency"
-            hint="Locking a currency hides the switcher for customers — they'll always see this currency."
+            hint={
+              currencyLocked
+                ? 'Currency is locked once set and can no longer be changed.'
+                : "Locking a currency hides the switcher for customers — they'll always see this currency."
+            }
           >
-            <div className="flex items-center gap-1 rounded-full bg-secondary p-1 w-fit">
-              {([
-                { value: '', label: 'Not set' },
-                { value: 'usd', label: '$ USD' },
-                { value: 'ils', label: '₪ ILS' },
-              ] as const).map(opt => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setCurrency(opt.value)}
-                  aria-pressed={currency === opt.value}
-                  className={cn(
-                    'px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                    currency === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            {currencyLocked ? (
+              <div className="px-3 py-1 rounded-full bg-secondary text-sm font-medium w-fit">
+                {currency === 'usd' ? '$ USD' : '₪ ILS'}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 rounded-full bg-secondary p-1 w-fit">
+                {([
+                  { value: '', label: 'Not set' },
+                  { value: 'usd', label: '$ USD' },
+                  { value: 'ils', label: '₪ ILS' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setCurrency(opt.value)}
+                    aria-pressed={currency === opt.value}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-sm font-medium transition-colors',
+                      currency === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </Field>
         </div>
       </section>
