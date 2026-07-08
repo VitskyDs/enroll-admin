@@ -107,8 +107,19 @@ test.describe('business profile settings (requires owner auth)', () => {
     await expect(page.locator('input[type="color"]')).toBeVisible()
   })
 
-  // TASK-93
-  test('shows Store currency section with Not set / USD / ILS options (TASK-93 AC#4)', async ({ page }) => {
+  // TASK-93 — mocks the settings-load query so this doesn't depend on the seeded
+  // business's real currency value: exercises the "not yet set" state specifically.
+  test('shows Not set / USD / ILS options when currency is unset (TASK-93 AC#4, TASK-104 AC#2)', async ({ page }) => {
+    await page.route('**/rest/v1/businesses?select=name%2Cslug*', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Corner Cup', slug: 'corner-cup', tagline: '', industry: '', address: '',
+          hours: '', brand_color: '#000000', logo_url: null, cover_image_url: null, currency: null,
+        }),
+      }),
+    )
     await page.goto('/owner/settings')
     await expect(page.getByText('Store currency')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Not set' })).toBeVisible()
@@ -116,14 +127,45 @@ test.describe('business profile settings (requires owner auth)', () => {
     await expect(page.getByRole('button', { name: '₪ ILS' })).toBeVisible()
   })
 
-  // TASK-93
-  test('selecting a currency and saving updates businesses.currency (TASK-93 AC#4)', async ({ page }) => {
+  // TASK-104 AC#1 — once a currency is already set, the toggle is replaced by a
+  // locked read-only pill; the buttons must not render at all.
+  test('shows a locked read-only pill when currency is already set (TASK-104 AC#1)', async ({ page }) => {
+    await page.route('**/rest/v1/businesses?select=name%2Cslug*', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Corner Cup', slug: 'corner-cup', tagline: '', industry: '', address: '',
+          hours: '', brand_color: '#000000', logo_url: null, cover_image_url: null, currency: 'usd',
+        }),
+      }),
+    )
+    await page.goto('/owner/settings')
+    await expect(page.getByText('$ USD')).toBeVisible()
+    await expect(page.getByText(/locked once set/i)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Not set' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: '₪ ILS' })).not.toBeVisible()
+  })
+
+  // TASK-104 AC#1 — the regression the code reviewer caught: the lock must engage
+  // immediately after a successful save, in the same session, with no reload.
+  test('selecting a currency and saving locks the control immediately, same session (TASK-104 AC#1)', async ({ page }) => {
+    await page.route('**/rest/v1/businesses?select=name%2Cslug*', route =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Corner Cup', slug: 'corner-cup', tagline: '', industry: '', address: '',
+          hours: '', brand_color: '#000000', logo_url: null, cover_image_url: null, currency: null,
+        }),
+      }),
+    )
     await page.goto('/owner/settings')
     await page.getByRole('button', { name: '₪ ILS' }).click()
     await page.getByRole('button', { name: /save changes/i }).click()
     await expect(page.getByText('Settings saved')).toBeVisible()
-    await page.reload()
-    await expect(page.getByRole('button', { name: '₪ ILS' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByText('₪ ILS')).toBeVisible()
+    await expect(page.getByRole('button', { name: '₪ ILS' })).not.toBeVisible()
   })
 
   test('shows validation error when name is cleared and saved (AC#1)', async ({ page }) => {
