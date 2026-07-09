@@ -26,17 +26,18 @@ function tierColor(tier: string | null) {
   }
 }
 
-function tierMultiplierFor(program: LoyaltyProgram, tierName: string | null): number {
-  if (!tierName) return 1
-  const tier = program.reward_tiers?.tiers?.find(
-    t => t.name.toLowerCase() === tierName.toLowerCase(),
-  )
-  return tier?.multiplier ?? 1
+// Mirrors award_manual_points' server-side tier lookup: the highest tier
+// whose min_points threshold the customer's lifetime_points has cleared.
+// customers.tier is a freestanding column nothing in the app writes — real
+// tier is always derived from lifetime_points, same as Home.tsx and settle_order.
+function currentTierFor(program: LoyaltyProgram, lifetimePoints: number) {
+  const sorted = [...(program.reward_tiers?.tiers ?? [])].sort((a, b) => a.min_points - b.min_points)
+  return [...sorted].reverse().find(t => t.min_points <= lifetimePoints) ?? null
 }
 
-function computePoints(purchaseAmount: number, program: LoyaltyProgram, tier: string | null): number {
+function computePoints(purchaseAmount: number, program: LoyaltyProgram, lifetimePoints: number): number {
   const ppd = program.earn_rules?.points_per_dollar ?? 0
-  const multiplier = tierMultiplierFor(program, tier)
+  const multiplier = currentTierFor(program, lifetimePoints)?.multiplier ?? 1
   return Math.floor(purchaseAmount * ppd * multiplier)
 }
 
@@ -75,9 +76,12 @@ export function AwardPointsDialog({
 
   const phoneInputRef = useRef<HTMLInputElement>(null)
 
-  // Reset state when dialog opens/closes
   useEffect(() => {
-    if (!open) {
+    if (open) setTimeout(() => phoneInputRef.current?.focus(), 50)
+  }, [open])
+
+  function handleOpenChange(next: boolean) {
+    if (!next) {
       setPhase('lookup')
       setPhone('')
       setCustomer(null)
@@ -86,10 +90,9 @@ export function AwardPointsDialog({
       setLookupError(null)
       setPurchaseAmount('')
       setSubmitError(null)
-    } else {
-      setTimeout(() => phoneInputRef.current?.focus(), 50)
     }
-  }, [open])
+    onOpenChange(next)
+  }
 
   async function handleLookup(e: React.FormEvent) {
     e.preventDefault()
@@ -137,43 +140,30 @@ export function AwardPointsDialog({
       return
     }
 
-    const points = program ? computePoints(amount, program, customer.tier) : 0
-    if (points < 1) {
-      setSubmitError('Purchase amount is too small to earn any points.')
-      return
-    }
-
     setSubmitting(true)
 
-    const { error: txErr } = await supabase.from('point_transactions').insert({
-      customer_id: customer.id,
-      business_id: businessId,
-      points,
-      reason: 'purchase',
+    const { error: rpcErr } = await supabase.rpc('award_manual_points', {
+      p_customer_id: customer.id,
+      p_purchase_amount: amount,
     })
 
-    if (txErr) { setSubmitError(txErr.message); setSubmitting(false); return }
-
-    const { error: ptErr } = await supabase
-      .from('customers')
-      .update({ points: customer.points + points })
-      .eq('id', customer.id)
-
-    if (ptErr) { setSubmitError(ptErr.message); setSubmitting(false); return }
+    if (rpcErr) { setSubmitError(rpcErr.message); setSubmitting(false); return }
 
     setSubmitting(false)
-    onOpenChange(false)
+    handleOpenChange(false)
     onSuccess()
   }
 
+  const currentTier = customer && program ? currentTierFor(program, customer.lifetime_points) : null
+
   const points = customer && program && purchaseAmount
-    ? computePoints(parseFloat(purchaseAmount) || 0, program, customer.tier)
+    ? computePoints(parseFloat(purchaseAmount) || 0, program, customer.lifetime_points)
     : null
 
-  const tierCls = customer ? tierColor(customer.tier) : null
+  const tierCls = currentTier ? tierColor(currentTier.name) : null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Award points manually</DialogTitle>
@@ -216,13 +206,13 @@ export function AwardPointsDialog({
             <div className="rounded-lg border bg-muted/30 px-4 py-3 flex flex-col gap-1.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-sm">{customer.name}</span>
-                {customer.tier && tierCls && (
+                {currentTier && tierCls && (
                   <span className={cn(
                     'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium',
                     tierCls,
                   )}>
                     <Star size={10} />
-                    {customer.tier.charAt(0).toUpperCase() + customer.tier.slice(1).toLowerCase()}
+                    {currentTier.name}
                   </span>
                 )}
               </div>
@@ -250,7 +240,7 @@ export function AwardPointsDialog({
               {points !== null && points > 0 && (
                 <p className="text-xs text-muted-foreground">
                   This will credit <span className="font-semibold text-foreground">{points.toLocaleString()} points</span>
-                  {customer.tier && ` (${customer.tier.toLowerCase()} tier multiplier applied)`}
+                  {currentTier && currentTier.multiplier && currentTier.multiplier !== 1 && ` (${currentTier.name.toLowerCase()} tier multiplier applied)`}
                 </p>
               )}
               {points !== null && points === 0 && purchaseAmount && parseFloat(purchaseAmount) > 0 && (
