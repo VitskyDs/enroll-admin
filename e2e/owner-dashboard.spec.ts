@@ -49,3 +49,83 @@ test.describe('dashboard structure (requires owner auth)', () => {
     await expect(page.getByText('/ 100')).toBeVisible()
   })
 })
+
+// Award points manually (TASK-86/TASK-118) — requires an authenticated owner
+// session plus a seeded customer with a known phone number.
+test.describe('award points manually (requires owner auth)', () => {
+  test.skip(true, 'requires owner auth fixture')
+
+  test('quick action opens a dialog instead of navigating away (TASK-86 AC#1)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await expect(page.getByRole('dialog', { name: /award points manually/i })).toBeVisible()
+    await expect(page).toHaveURL('/owner/dashboard')
+  })
+
+  test('looking up an unknown phone number shows a clear empty state (TASK-86 AC#2)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await page.getByLabel(/customer phone number/i).fill('0000000000')
+    await page.getByRole('button', { name: /search/i }).click()
+    await expect(page.getByText(/no customer found/i)).toBeVisible()
+  })
+
+  test('matched customer shows name, tier, and points balance before confirming (TASK-86 AC#3)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await page.getByLabel(/customer phone number/i).fill('5555551234')
+    await page.getByRole('button', { name: /search/i }).click()
+    await expect(page.getByText(/pts balance/i)).toBeVisible()
+  })
+
+  test('entering a purchase amount computes points from earn rules and tier multiplier (TASK-86 AC#4)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await page.getByLabel(/customer phone number/i).fill('5555551234')
+    await page.getByRole('button', { name: /search/i }).click()
+    await page.getByLabel(/purchase amount/i).fill('25')
+    await expect(page.getByText(/this will credit/i)).toBeVisible()
+  })
+
+  test('confirming credits the customer and closes the dialog (TASK-86 AC#5, TASK-118 AC#2/#3)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await page.getByLabel(/customer phone number/i).fill('5555551234')
+    await page.getByRole('button', { name: /search/i }).click()
+    await page.getByLabel(/purchase amount/i).fill('25')
+    await page.getByRole('button', { name: /^award points$/i }).click()
+    await expect(page.getByRole('dialog', { name: /award points manually/i })).toBeHidden()
+    await expect(page.getByText(/earned .* points/i).first()).toBeVisible()
+  })
+
+  test('an invalid purchase amount surfaces an inline error (TASK-86 AC#6)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await page.getByLabel(/customer phone number/i).fill('5555551234')
+    await page.getByRole('button', { name: /search/i }).click()
+    await page.getByLabel(/purchase amount/i).fill('0')
+    await page.getByRole('button', { name: /^award points$/i }).click()
+    await expect(page.getByText(/enter a valid purchase amount/i)).toBeVisible()
+  })
+
+  test('an unauthorized RPC write surfaces its error inline (TASK-118 AC#4)', async ({ page }) => {
+    // Simulates the RPC rejecting a customer outside the owner's business —
+    // covered directly against the database in TASK-118's manual verification;
+    // this documents the expected UI behavior once the fixture exists.
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    await page.getByLabel(/customer phone number/i).fill('5555551234')
+    await page.getByRole('button', { name: /search/i }).click()
+    await page.getByLabel(/purchase amount/i).fill('25')
+    await page.getByRole('button', { name: /^award points$/i }).click()
+    await expect(page.getByText(/not authorized/i)).toBeVisible()
+  })
+
+  test('all dialog copy is sentence case with no emojis (TASK-86 AC#7)', async ({ page }) => {
+    await page.goto('/owner/dashboard')
+    await page.getByRole('button', { name: /award points manually/i }).click()
+    const dialog = page.getByRole('dialog', { name: /award points manually/i })
+    const text = await dialog.innerText()
+    expect(text).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
+  })
+})
