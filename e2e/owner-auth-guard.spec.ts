@@ -11,3 +11,13 @@ test('authenticated non-owner sees the not-an-owner message instead of a redirec
   await expect(page.getByText("This account isn't an owner on any business")).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 })
+
+// TASK-123: the not-an-owner screen used to be a dead end with no path to
+// actually creating a business — "Create a business" opens the onboarding wizard.
+test('not-an-owner screen offers a path to create a business (TASK-123)', async ({ page }) => {
+  await signInAsNonOwner(page)
+  await expect(page).toHaveURL('/sign-in')
+  await page.getByRole('button', { name: 'Create a business' }).click()
+  await expect(page).toHaveURL('/owner/onboarding')
+  await expect(page.getByText(/I'll help you set up your business/i)).toBeVisible()
+})

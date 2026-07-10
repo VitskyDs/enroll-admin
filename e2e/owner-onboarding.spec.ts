@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
+import { signInAsNonOwner } from './helpers/auth'
 
 test.describe('owner onboarding', () => {
   test.beforeEach(async ({ page }) => {
+    await signInAsNonOwner(page)
+    // Wait for auth + ownership to resolve before navigating away — sign-in
+    // itself doesn't confirm completion, and navigating too early can race
+    // the session write, sending /owner/onboarding's RequireAuth to /sign-in.
+    await expect(page.getByText("This account isn't an owner on any business")).toBeVisible()
     await page.goto('/owner/onboarding')
   })
 
