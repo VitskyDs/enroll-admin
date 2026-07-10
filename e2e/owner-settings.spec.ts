@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { signInAsOwner } from './helpers/auth'
 
 // Auth guard
 test('unauthenticated /owner/settings redirects to sign-in', async ({ page }) => {
@@ -7,35 +8,36 @@ test('unauthenticated /owner/settings redirects to sign-in', async ({ page }) =>
 })
 
 // Structural tests — require an authenticated owner session.
+// Fields use a plain sibling <label> with no htmlFor/id association, so
+// getByLabel doesn't resolve them — placeholder text is used instead.
 test.describe('business profile settings (requires owner auth)', () => {
-  test.skip(true, 'requires owner auth fixture')
+  test.beforeEach(async ({ page }) => {
+    await signInAsOwner(page)
+    await page.goto('/owner/settings')
+  })
 
   test('shows Business profile heading (AC#1)', async ({ page }) => {
-    await page.goto('/owner/settings')
     await expect(page.getByRole('heading', { name: /business profile/i })).toBeVisible()
   })
 
   test('shows all basic info fields (AC#1)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    await expect(page.getByLabel(/business name/i)).toBeVisible()
-    await expect(page.getByLabel(/slug/i)).toBeVisible()
-    await expect(page.getByLabel(/tagline/i)).toBeVisible()
-    await expect(page.getByLabel(/industry/i)).toBeVisible()
-    await expect(page.getByLabel(/address/i)).toBeVisible()
-    await expect(page.getByLabel(/hours/i)).toBeVisible()
+    await expect(page.getByPlaceholder('Corner Cup')).toBeVisible()
+    await expect(page.getByPlaceholder('corner-cup')).toBeVisible()
+    await expect(page.getByPlaceholder('Your neighborhood coffee shop')).toBeVisible()
+    await expect(page.locator('select')).toBeVisible()
+    await expect(page.getByPlaceholder('123 Main St, City, State')).toBeVisible()
+    await expect(page.getByPlaceholder('Mon–Fri 7am–6pm')).toBeVisible()
   })
 
   test('slug with invalid format shows error on blur (AC#3)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    const slugInput = page.getByLabel(/slug/i)
+    const slugInput = page.getByPlaceholder('corner-cup')
     await slugInput.fill('Invalid Slug!')
     await slugInput.blur()
-    await expect(page.getByText(/lowercase letters, numbers, and hyphens/i)).toBeVisible()
+    await expect(page.getByText('Slug must be lowercase letters, numbers, and hyphens only.')).toBeVisible()
   })
 
   test('slug auto-lowercases on input (AC#3)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    const slugInput = page.getByLabel(/slug/i)
+    const slugInput = page.getByPlaceholder('corner-cup')
     await slugInput.fill('MySlug')
     await expect(slugInput).toHaveValue('myslug')
   })
@@ -43,8 +45,7 @@ test.describe('business profile settings (requires owner auth)', () => {
   // TASK-111 — clearing the slug field used to leave it empty (blocked on save with
   // "Slug is required"); it should instead snap back to the originally-saved value.
   test('clearing the slug reverts it to the originally-saved value (TASK-111 AC#1)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    const slugInput = page.getByLabel(/slug/i)
+    const slugInput = page.getByPlaceholder('corner-cup')
     const original = await slugInput.inputValue()
     await slugInput.fill('some-other-slug')
     await slugInput.fill('')
@@ -57,8 +58,7 @@ test.describe('business profile settings (requires owner auth)', () => {
     await page.route('**/rest/v1/businesses?select=id*', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }),
     )
-    await page.goto('/owner/settings')
-    await page.getByLabel(/slug/i).fill('brand-new-available-slug')
+    await page.getByPlaceholder('corner-cup').fill('brand-new-available-slug')
     await expect(page.getByLabel('Slug is available')).toBeVisible()
     await expect(page.getByText(/already taken/i)).not.toBeVisible()
   })
@@ -69,8 +69,7 @@ test.describe('business profile settings (requires owner auth)', () => {
     await page.route('**/rest/v1/businesses?select=id*', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'some-other-business-id' }) }),
     )
-    await page.goto('/owner/settings')
-    await page.getByLabel(/slug/i).fill('taken-live-slug')
+    await page.getByPlaceholder('corner-cup').fill('taken-live-slug')
     await expect(page.getByText(/this slug is already taken/i)).toBeVisible()
     await expect(page.getByLabel('Slug is available')).not.toBeVisible()
   })
@@ -87,8 +86,7 @@ test.describe('business profile settings (requires owner auth)', () => {
         body: JSON.stringify({ id: 'some-other-business-id' }),
       }),
     )
-    await page.goto('/owner/settings')
-    const slugInput = page.getByLabel(/slug/i)
+    const slugInput = page.getByPlaceholder('corner-cup')
     await slugInput.fill('taken-slug')
     await page.getByRole('button', { name: /save changes/i }).click()
     await expect(page.getByText(/this slug is already taken/i)).toBeVisible()
@@ -96,14 +94,12 @@ test.describe('business profile settings (requires owner auth)', () => {
   })
 
   test('shows logo and cover image upload areas (AC#4, AC#5)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    await expect(page.getByText('Logo')).toBeVisible()
-    await expect(page.getByText('Cover image')).toBeVisible()
+    await expect(page.getByText('Logo', { exact: true })).toBeVisible()
+    await expect(page.getByText('Cover image', { exact: true })).toBeVisible()
   })
 
   test('shows brand color section with color picker and hex input (AC#6)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    await expect(page.getByText('Brand color')).toBeVisible()
+    await expect(page.getByText('Brand color', { exact: true })).toBeVisible()
     await expect(page.locator('input[type="color"]')).toBeVisible()
   })
 
@@ -149,6 +145,9 @@ test.describe('business profile settings (requires owner auth)', () => {
 
   // TASK-104 AC#1 — the regression the code reviewer caught: the lock must engage
   // immediately after a successful save, in the same session, with no reload.
+  // The save PATCH is mocked too — this business's currency is real seeded data
+  // (migration 20260611120000 sets corner-cup to 'usd') and the lock is permanent
+  // and can't be undone through the UI, so this must never hit the live DB.
   test('selecting a currency and saving locks the control immediately, same session (TASK-104 AC#1)', async ({ page }) => {
     await page.route('**/rest/v1/businesses?select=name%2Cslug*', route =>
       route.fulfill({
@@ -160,6 +159,9 @@ test.describe('business profile settings (requires owner auth)', () => {
         }),
       }),
     )
+    await page.route('**/rest/v1/businesses?id=eq.*', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }),
+    )
     await page.goto('/owner/settings')
     await page.getByRole('button', { name: '₪ ILS' }).click()
     await page.getByRole('button', { name: /save changes/i }).click()
@@ -169,8 +171,7 @@ test.describe('business profile settings (requires owner auth)', () => {
   })
 
   test('shows validation error when name is cleared and saved (AC#1)', async ({ page }) => {
-    await page.goto('/owner/settings')
-    await page.getByLabel(/business name/i).fill('')
+    await page.getByPlaceholder('Corner Cup').fill('')
     await page.getByRole('button', { name: /save changes/i }).click()
     await expect(page.getByText(/business name is required/i)).toBeVisible()
   })
