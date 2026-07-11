@@ -1,14 +1,11 @@
 {
-  "name": "enroll-v2",
+  "name": "enroll-admin",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.config.consumer.ts",
-    "dev:admin": "vite --config vite.config.admin.ts",
-    "build": "tsc -b && vite build --config vite.config.consumer.ts",
-    "build:consumer": "tsc -b && vite build --config vite.config.consumer.ts",
-    "build:admin": "tsc -b && vite build --config vite.config.admin.ts",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test"

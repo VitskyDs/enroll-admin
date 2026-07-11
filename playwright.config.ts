@@ -1,10 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// Owner specs exercise /owner/* routes, which only exist on the admin build
-// (TASK-87 split the consumer and admin apps into separate Vite entries).
-// Everything else runs against the consumer app.
-const ownerSpecs = /owner-.*\.spec\.ts$/
-
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -17,6 +12,8 @@ export default defineConfig({
   // occasionally too tight for the auth helper's own retry loop to land.
   timeout: 45_000,
   use: {
+    ...devices['Desktop Chrome'],
+    baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     headless: true,
     actionTimeout: 15_000,
@@ -24,30 +21,10 @@ export default defineConfig({
   expect: {
     timeout: 15_000,
   },
-  projects: [
-    {
-      name: 'consumer',
-      testIgnore: ownerSpecs,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5173' },
-    },
-    {
-      name: 'admin',
-      testMatch: ownerSpecs,
-      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5175' },
-    },
-  ],
-  webServer: [
-    {
-      command: 'npm run dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
-    },
-    {
-      command: 'npm run dev:admin -- --port 5175 --strictPort',
-      url: 'http://localhost:5175',
-      reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
-    },
-  ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 30_000,
+  },
 })
