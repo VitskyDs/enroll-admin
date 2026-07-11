@@ -22,7 +22,7 @@ export type GeneratedProgram = {
   earn_rules: EarnRules
   reward_tiers: RewardTiersConfig
   referral_rules: ReferralRules
-  brand_voice: Record<string, unknown>
+  brand_voice_summary: string
 }
 
 const EDGE_FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-products`
@@ -91,6 +91,6 @@ export async function generateLoyaltyProgram(input: ProgramInput): Promise<Gener
     earn_rules: { points_per_dollar: 1 },
     reward_tiers: { tiers },
     referral_rules: { referrer_points: referrerPoints, referee_points: Math.round(referrerPoints * 0.6) },
-    brand_voice: { summary: `Built to help ${input.businessName} grow loyal customers.` },
+    brand_voice_summary: `Built to help ${input.businessName} grow loyal customers.`,
   }
 }

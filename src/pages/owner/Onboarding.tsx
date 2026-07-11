@@ -117,6 +117,7 @@ export default function OwnerOnboarding() {
   const [rewardType, setRewardType] = useState<RewardType | null>(null)
   const [generatedProgram, setGeneratedProgram] = useState<GeneratedProgram | null>(null)
   const [slugError, setSlugError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const firstName = ((user?.user_metadata?.full_name as string | undefined) ?? '').split(' ')[0] || 'there'
   const header = phaseHeader(step, firstName)
@@ -219,6 +220,7 @@ export default function OwnerOnboarding() {
     setRewardType(null)
     setGeneratedProgram(null)
     setSlugError(null)
+    setSubmitError(null)
     pushAi("What's the name of your business?")
   }
 
@@ -287,6 +289,7 @@ export default function OwnerOnboarding() {
 
     if (!user) return
     setStep('submitting')
+    setSubmitError(null)
 
     const slug = slugify(businessName)
     const { data: existing } = await supabase.from('businesses').select('id').eq('slug', slug).maybeSingle()
@@ -299,17 +302,27 @@ export default function OwnerOnboarding() {
       .select('id')
       .single()
 
-    if (bizErr || !biz) { setStep('program-review'); return }
+    if (bizErr || !biz) {
+      setSubmitError('Something went wrong creating your business. Please try again.')
+      setStep('program-review')
+      return
+    }
 
-    await supabase.from('loyalty_programs').insert({
+    const { error: programErr } = await supabase.from('loyalty_programs').insert({
       business_id: biz.id,
       program_name: generatedProgram.program_name,
       currency_name: generatedProgram.currency_name,
       earn_rules: generatedProgram.earn_rules,
       reward_tiers: generatedProgram.reward_tiers,
       referral_rules: generatedProgram.referral_rules,
-      brand_voice: generatedProgram.brand_voice,
+      brand_voice_summary: generatedProgram.brand_voice_summary,
     })
+
+    if (programErr) {
+      setSubmitError('Something went wrong creating your loyalty program. Please try again.')
+      setStep('program-review')
+      return
+    }
 
     const selectedProducts = extractedProducts.filter((_, i) => selectedIdxs.has(i))
     if (selectedProducts.length > 0) {
@@ -389,6 +402,7 @@ export default function OwnerOnboarding() {
               ))}
             </div>
             {slugError && <p className="text-xs text-muted-foreground">{slugError}</p>}
+            {submitError && <p className="text-xs text-destructive">{submitError}</p>}
           </div>
         )
       case 'submitting':
