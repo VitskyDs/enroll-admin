@@ -2,26 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
-import { takeAuthTenant, getLastTenant } from '@/hooks/useTenant'
-
-function getPostAuthDestination() {
-  // The active tenant was stashed before the OAuth redirect; fall back to the
-  // last-visited tenant if it's missing.
-  const tenant = takeAuthTenant() ?? getLastTenant()
-
-  if (sessionStorage.getItem('enrollmentPending') === '1') {
-    sessionStorage.removeItem('enrollmentPending')
-    return `/${tenant}/home?flow=enroll`
-  }
-  // Joining via a share link: return to that tenant's enroll landing.
-  const pending = sessionStorage.getItem('pendingJoinSlug')
-  const ref = sessionStorage.getItem('pendingJoinRef')
-  if (ref) sessionStorage.removeItem('pendingJoinRef')
-  if (pending) {
-    return `/${pending}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`
-  }
-  return `/${tenant}/home`
-}
 
 export default function AuthCallback() {
   const navigate = useNavigate()
@@ -32,7 +12,7 @@ export default function AuthCallback() {
     if (ran.current) return
     ran.current = true
 
-    const signInPath = `/${getLastTenant()}/sign-in`
+    const signInPath = '/sign-in'
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     const error = params.get('error')
@@ -42,9 +22,11 @@ export default function AuthCallback() {
       return
     }
 
+    // A signed-in non-owner lands on /sign-in too — AppAdmin.tsx renders the
+    // NotOwnerAccess screen there instead of looping back to Google.
     async function resolveDestination(userId: string) {
       const { data } = await supabase.from('business_owners').select('business_id').eq('user_id', userId).maybeSingle()
-      return data ? '/owner/dashboard' : getPostAuthDestination()
+      return data ? '/owner/dashboard' : signInPath
     }
 
     if (code) {
