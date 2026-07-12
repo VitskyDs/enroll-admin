@@ -134,8 +134,8 @@ function PanelContent({
         .limit(50),
       supabase
         .from('referrals')
-        .select('id, status, created_at, referee_customer_id')
-        .eq('referrer_customer_id', customer.id)
+        .select('id, status, created_at, referee_id')
+        .eq('referrer_id', customer.id)
         .eq('business_id', businessId)
         .order('created_at', { ascending: false }),
       supabase
@@ -147,7 +147,7 @@ function PanelContent({
 
     // Fetch referee names
     const refereeIds = (refRes.data ?? [])
-      .map(r => r.referee_customer_id)
+      .map(r => r.referee_id)
       .filter(Boolean) as string[]
 
     let refereeMap: Record<string, { name: string; joined_at: string | null }> = {}
@@ -163,7 +163,7 @@ function PanelContent({
       id: r.id,
       status: r.status,
       created_at: r.created_at,
-      referee: r.referee_customer_id ? (refereeMap[r.referee_customer_id] ?? null) : null,
+      referee: r.referee_id ? (refereeMap[r.referee_id] ?? null) : null,
     }))
 
     const rewardId = progRes.data?.punch_card_reward_id ?? null

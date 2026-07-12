@@ -134,7 +134,7 @@ export function useOwnerDashboard() {
             .eq('reason', 'redemption'),
           supabase
             .from('referrals')
-            .select('referrer_customer_id')
+            .select('referrer_id')
             .eq('business_id', ownedBusinessId)
             .eq('status', 'completed'),
           supabase
@@ -177,7 +177,7 @@ export function useOwnerDashboard() {
           (redemptionIdsRes.data ?? []).map(r => r.customer_id),
         )
         const referralCustomerIds = new Set(
-          (referralIdsRes.data ?? []).map(r => r.referrer_customer_id),
+          (referralIdsRes.data ?? []).map(r => r.referrer_id),
         )
 
         const loyaltyStrength = computeLoyaltyStrength(
