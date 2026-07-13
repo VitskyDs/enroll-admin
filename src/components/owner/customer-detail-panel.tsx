@@ -140,7 +140,7 @@ function PanelContent({
         .order('created_at', { ascending: false }),
       supabase
         .from('loyalty_programs')
-        .select('punch_card_enabled, punch_card_target, punch_card_reward_id')
+        .select('punch_card_enabled, punch_card_target, punch_card_reward_type, punch_card_reward_product_ids, punch_card_reward_category')
         .eq('business_id', businessId)
         .maybeSingle(),
     ])
@@ -166,10 +166,17 @@ function PanelContent({
       referee: r.referee_id ? (refereeMap[r.referee_id] ?? null) : null,
     }))
 
-    const rewardId = progRes.data?.punch_card_reward_id ?? null
-    const punchRewardName = rewardId
-      ? (await supabase.from('rewards').select('name').eq('id', rewardId).single()).data?.name ?? null
-      : null
+    const rewardType = progRes.data?.punch_card_reward_type ?? null
+    let punchRewardName: string | null = null
+    if (rewardType === 'products' && progRes.data?.punch_card_reward_product_ids?.length) {
+      const { data: rewardProducts } = await supabase
+        .from('products')
+        .select('name')
+        .in('id', progRes.data.punch_card_reward_product_ids)
+      punchRewardName = (rewardProducts ?? []).map(p => p.name).join(', ') || null
+    } else if (rewardType === 'category') {
+      punchRewardName = progRes.data?.punch_card_reward_category ?? null
+    }
 
     setData({
       transactions: (txRes.data ?? []) as Transaction[],

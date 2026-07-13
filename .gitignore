@@ -33,3 +33,7 @@ supabase/.temp/
 supabase/functions/.env
 test-results/
 .vercel
+
+# QA/e2e screenshot artifacts — may capture real customer data from the
+# shared dev/prod Supabase project, never commit these
+e2e/screenshots/
