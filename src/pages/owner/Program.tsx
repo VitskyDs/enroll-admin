@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Check } from 'lucide-react'
+import { Pencil, Check, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram'
+import { writeCache } from '@/lib/query-cache'
 import { Button } from '@vitskyds/enroll-ui'
+import { cn } from '@/lib/utils'
 import type { EarnRules, RewardTiersConfig, ReferralRules } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -16,10 +18,13 @@ type ProductRow = {
   points_override: string
 }
 
-type ActiveReward = {
+type ActiveProduct = {
   id: string
   name: string
+  category: string | null
 }
+
+type PunchRewardMode = 'products' | 'category'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +68,126 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+// ─── Punch card reward editor ───────────────────────────────────────────────
+
+function PunchCardRewardEditor({
+  activeProducts,
+  categories,
+  mode,
+  onModeChange,
+  selectedProductIds,
+  onProductsChange,
+  selectedCategory,
+  onCategoryChange,
+  onSave,
+  saving,
+  error,
+}: {
+  activeProducts: ActiveProduct[]
+  categories: string[]
+  mode: PunchRewardMode
+  onModeChange: (mode: PunchRewardMode) => void
+  selectedProductIds: string[]
+  onProductsChange: (ids: string[]) => void
+  selectedCategory: string
+  onCategoryChange: (category: string) => void
+  onSave: () => void
+  saving: boolean
+  error: string | null
+}) {
+  const categoryOptions = selectedCategory && !categories.includes(selectedCategory)
+    ? [selectedCategory, ...categories]
+    : categories
+  const productsInSelectedCategory = activeProducts.filter(p => p.category === selectedCategory)
+  const categoryHasNoProducts = mode === 'category' && selectedCategory !== '' && productsInSelectedCategory.length === 0
+
+  function toggleProduct(id: string) {
+    onProductsChange(
+      selectedProductIds.includes(id)
+        ? selectedProductIds.filter(p => p !== id)
+        : [...selectedProductIds, id],
+    )
+  }
+
+  return (
+    <fieldset className="space-y-2.5">
+      <legend className="text-sm font-medium">Completion reward</legend>
+
+      <div role="radiogroup" aria-label="Reward type" className="inline-flex rounded-md border p-0.5 bg-muted/30">
+        {(['products', 'category'] as PunchRewardMode[]).map(m => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={mode === m}
+            onClick={() => onModeChange(m)}
+            className={cn(
+              'px-3 py-1 text-xs font-medium rounded-sm transition-colors',
+              mode === m ? 'bg-background shadow-sm' : 'text-muted-foreground',
+            )}
+          >
+            {m === 'products' ? 'Specific products' : 'Category'}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'products' && (
+        activeProducts.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No active products yet — add one on the products page first.</p>
+        ) : (
+          <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
+            {activeProducts.map(p => (
+              <label key={p.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-muted/20">
+                <input
+                  type="checkbox"
+                  checked={selectedProductIds.includes(p.id)}
+                  onChange={() => toggleProduct(p.id)}
+                  className="h-3.5 w-3.5 rounded border-input"
+                />
+                <span className="flex-1 truncate">{p.name}</span>
+                {p.category && <span className="text-xs text-muted-foreground shrink-0">{p.category}</span>}
+              </label>
+            ))}
+          </div>
+        )
+      )}
+
+      {mode === 'category' && (
+        categoryOptions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No product categories yet — add a category to a product first.</p>
+        ) : (
+          <select
+            aria-label="Reward category"
+            value={selectedCategory}
+            onChange={e => onCategoryChange(e.target.value)}
+            className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+          >
+            <option value="">Select a category</option>
+            {categoryOptions.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        )
+      )}
+
+      {categoryHasNoProducts && (
+        <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+          <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+          This category has no active products — customers won't have anything to redeem until you add one.
+        </p>
+      )}
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <div className="flex justify-end">
+        <Button size="sm" onClick={onSave} disabled={saving || categoryHasNoProducts}>
+          {saving ? 'Saving…' : 'Save reward'}
+        </Button>
+      </div>
+    </fieldset>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerProgram() {
@@ -70,8 +195,14 @@ export default function OwnerProgram() {
   const { program, loading } = useLoyaltyProgram(ownedBusinessId)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
-  const [rewards, setRewards] = useState<ActiveReward[]>([])
   const [products, setProducts] = useState<ProductRow[]>([])
+  const [activeProducts, setActiveProducts] = useState<ActiveProduct[]>([])
+
+  const [rewardMode, setRewardMode] = useState<PunchRewardMode>('products')
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [rewardSaving, setRewardSaving] = useState(false)
+  const [rewardError, setRewardError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!toastMsg) return
@@ -79,16 +210,9 @@ export default function OwnerProgram() {
     return () => clearTimeout(t)
   }, [toastMsg])
 
-  // Load rewards + products (read-only display)
+  // Load products (read-only per-product overrides display + active list for the punch card reward picker)
   useEffect(() => {
     if (!ownedBusinessId) return
-    supabase
-      .from('rewards')
-      .select('id, name')
-      .eq('business_id', ownedBusinessId)
-      .eq('status', 'active')
-      .then(({ data }) => setRewards(data ?? []))
-
     supabase
       .from('products')
       .select('id, name, price_cents, points_override')
@@ -105,10 +229,71 @@ export default function OwnerProgram() {
           })),
         ),
       )
+
+    supabase
+      .from('products')
+      .select('id, name, category')
+      .eq('business_id', ownedBusinessId)
+      .eq('status', 'active')
+      .order('name')
+      .then(({ data }) => setActiveProducts(data ?? []))
   }, [ownedBusinessId])
+
+  // Seed the punch card reward editor from the loaded program
+  useEffect(() => {
+    if (!program) return
+    setRewardMode(program.punch_card_reward_type === 'category' ? 'category' : 'products')
+    setSelectedProductIds(program.punch_card_reward_product_ids ?? [])
+    setSelectedCategory(program.punch_card_reward_category ?? '')
+  }, [program])
 
   function handleEditClick() {
     setToastMsg('Editing the program is coming soon')
+  }
+
+  async function saveReward() {
+    setRewardError(null)
+    if (rewardMode === 'products') {
+      if (selectedProductIds.length === 0) {
+        setRewardError('Select at least one product.')
+        return
+      }
+    } else {
+      if (!selectedCategory) {
+        setRewardError('Select a category.')
+        return
+      }
+      if (!activeProducts.some(p => p.category === selectedCategory)) {
+        setRewardError('This category has no active products — choose a different category or add one first.')
+        return
+      }
+    }
+
+    const payload =
+      rewardMode === 'products'
+        ? {
+            punch_card_reward_type: 'products' as const,
+            punch_card_reward_product_ids: selectedProductIds,
+            punch_card_reward_category: null,
+          }
+        : {
+            punch_card_reward_type: 'category' as const,
+            punch_card_reward_product_ids: null,
+            punch_card_reward_category: selectedCategory,
+          }
+
+    setRewardSaving(true)
+    const { error } = await supabase
+      .from('loyalty_programs')
+      .update(payload)
+      .eq('business_id', ownedBusinessId!)
+    setRewardSaving(false)
+    if (error) {
+      setRewardError(error.message)
+      return
+    }
+    if (program) writeCache('loyaltyProgram', ownedBusinessId!, { ...program, ...payload })
+    setToastMsg('Punch card reward saved')
   }
 
   if (loading) {
@@ -125,7 +310,9 @@ export default function OwnerProgram() {
   const tierConfig = program?.reward_tiers as RewardTiersConfig | undefined
   const tiers = tierConfig?.tiers ?? []
   const referral = program?.referral_rules as ReferralRules | undefined
-  const punchRewardName = rewards.find(r => r.id === program?.punch_card_reward_id)?.name
+  const rewardCategories = Array.from(
+    new Set(activeProducts.map(p => p.category).filter((c): c is string => !!c)),
+  ).sort()
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
@@ -209,10 +396,22 @@ export default function OwnerProgram() {
       >
         <Field label="Status" value={program?.punch_card_enabled ? 'Enabled' : 'Disabled'} />
         {program?.punch_card_enabled && (
-          <div className="grid grid-cols-2 gap-4">
+          <>
             <Field label="Target punches" value={program?.punch_card_target ?? 'Not set'} />
-            <Field label="Completion reward" value={punchRewardName ?? 'None'} />
-          </div>
+            <PunchCardRewardEditor
+              activeProducts={activeProducts}
+              categories={rewardCategories}
+              mode={rewardMode}
+              onModeChange={setRewardMode}
+              selectedProductIds={selectedProductIds}
+              onProductsChange={setSelectedProductIds}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+              onSave={saveReward}
+              saving={rewardSaving}
+              error={rewardError}
+            />
+          </>
         )}
       </Section>
 
