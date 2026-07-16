@@ -164,6 +164,7 @@ function ProductForm({
   onChange,
   onSave,
   onClose,
+  onDelete,
   saving,
   error,
   mode,
@@ -175,6 +176,7 @@ function ProductForm({
   onChange: (patch: Partial<FormDraft>) => void
   onSave: () => void
   onClose: () => void
+  onDelete: () => void
   saving: boolean
   error: string | null
   mode: 'add' | 'edit'
@@ -375,10 +377,24 @@ function ProductForm({
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
-        <div className="border-t p-4 shrink-0">
+        <div className="border-t p-4 shrink-0 space-y-3">
           <Button className="w-full" onClick={onSave} disabled={saving}>
             {saving ? t('common.saving') : mode === 'add' ? t('admin.products.addTitle') : t('admin.products.saveChanges')}
           </Button>
+          {mode === 'edit' && (
+            <>
+              <div className="border-t" />
+              <Button
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive"
+                onClick={onDelete}
+                disabled={saving}
+              >
+                <Trash2 size={14} />
+                {t('admin.products.deleteButtonTitle')}
+              </Button>
+            </>
+          )}
         </div>
       </>
     </Drawer>
@@ -393,7 +409,6 @@ function ProductRow({
   hebrewOnly,
   onEdit,
   onStatusToggle,
-  onDelete,
   onDragStart,
   onDragOver,
   onDrop,
@@ -404,7 +419,6 @@ function ProductRow({
   hebrewOnly: boolean
   onEdit: () => void
   onStatusToggle: () => void
-  onDelete: () => void
   onDragStart: () => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
@@ -477,17 +491,6 @@ function ProductRow({
       {/* Edit */}
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onEdit}>
         <Pencil size={14} />
-      </Button>
-
-      {/* Delete */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
-        title={t('admin.products.deleteButtonTitle')}
-        onClick={onDelete}
-      >
-        <Trash2 size={14} />
       </Button>
     </div>
   )
@@ -644,6 +647,7 @@ export default function OwnerProducts() {
       setProducts(prev => prev.filter(p => p.id !== deleteTarget.id))
       setToastVariant('success')
       setToastMsg(t('admin.products.productDeleted'))
+      setDrawerOpen(false)
     }
     setDeleting(false)
     setDeleteTarget(null)
@@ -722,7 +726,6 @@ export default function OwnerProducts() {
               hebrewOnly={hebrewOnly}
               onEdit={() => openEdit(p)}
               onStatusToggle={() => toggleStatus(p)}
-              onDelete={() => setDeleteTarget(p)}
               onDragStart={() => handleDragStart(i)}
               onDragOver={e => handleDragOver(e, i)}
               onDrop={handleDrop}
@@ -740,6 +743,10 @@ export default function OwnerProducts() {
         onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
         onSave={handleSave}
         onClose={() => setDrawerOpen(false)}
+        onDelete={() => {
+          const target = products.find(p => p.id === editingId)
+          if (target) setDeleteTarget(target)
+        }}
         saving={saving}
         error={formError}
         mode={editingId ? 'edit' : 'add'}
