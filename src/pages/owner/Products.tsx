@@ -15,7 +15,9 @@ import { Drawer } from '@/components/owner/drawer'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ProductStatus = 'active' | 'draft' | 'inactive'
+// DB value is 'archived' (products.status check constraint) — displayed to
+// the owner as "Inactive" (t('status.inactive')), same copy used elsewhere.
+type ProductStatus = 'active' | 'draft' | 'archived'
 
 // Points a product earns by default, derived from its price and the program's
 // points-per-dollar earn rule. Returns null when no rate is configured.
@@ -66,8 +68,8 @@ const EMPTY_DRAFT: FormDraft = {
 }
 
 const STATUS_CYCLE: Record<ProductStatus, ProductStatus> = {
-  active: 'inactive',
-  inactive: 'draft',
+  active: 'archived',
+  archived: 'draft',
   draft: 'active',
 }
 
@@ -80,7 +82,7 @@ function statusLabel(t: TFunction, status: ProductStatus): string {
 const STATUS_COLORS: Record<ProductStatus, string> = {
   active: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400',
   draft: 'text-yellow-700 bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800 dark:text-yellow-400',
-  inactive: 'text-zinc-500 bg-zinc-50 border-zinc-200 dark:bg-zinc-800/30 dark:border-zinc-700',
+  archived: 'text-zinc-500 bg-zinc-50 border-zinc-200 dark:bg-zinc-800/30 dark:border-zinc-700',
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -317,7 +319,7 @@ function ProductForm({
               >
                 <option value="active">{t('status.active')}</option>
                 <option value="draft">{t('admin.products.statusDraft')}</option>
-                <option value="inactive">{t('status.inactive')}</option>
+                <option value="archived">{t('status.inactive')}</option>
               </select>
             </div>
           </div>
