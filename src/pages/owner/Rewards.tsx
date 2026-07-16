@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Pencil, Gift, X, Check, Upload } from 'lucide-react'
+import { Plus, Pencil, Gift, X, Check, Upload, Trash2, TriangleAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBusiness } from '@/hooks/useBusiness'
@@ -45,15 +45,63 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={cn('animate-pulse rounded bg-muted', className)} />
 }
 
-function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+function Toast({
+  message,
+  variant = 'success',
+  onDone,
+}: {
+  message: string
+  variant?: 'success' | 'error'
+  onDone: () => void
+}) {
   useEffect(() => {
     const t = setTimeout(onDone, 3000)
     return () => clearTimeout(t)
   }, [onDone])
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg bg-foreground text-background text-sm px-4 py-2.5 shadow-lg pointer-events-none">
-      <Check size={14} />
+    <div
+      className={cn(
+        'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg text-sm px-4 py-2.5 shadow-lg pointer-events-none',
+        variant === 'error' ? 'bg-destructive text-white/95' : 'bg-foreground text-background',
+      )}
+    >
+      {variant === 'error' ? <TriangleAlert size={14} /> : <Check size={14} />}
       {message}
+    </div>
+  )
+}
+
+function DeleteConfirm({
+  title,
+  message,
+  onCancel,
+  onConfirm,
+  deleting,
+}: {
+  title: string
+  message: string
+  onCancel: () => void
+  onConfirm: () => void
+  deleting: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-lg border bg-background p-5 shadow-xl space-y-4">
+        <div className="space-y-1.5">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onCancel} disabled={deleting}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="destructive" size="sm" onClick={onConfirm} disabled={deleting}>
+            {deleting ? t('common.deleting') : t('common.delete')}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -190,10 +238,12 @@ function RewardRow({
   reward,
   onEdit,
   onStatusToggle,
+  onDelete,
 }: {
   reward: Reward
   onEdit: () => void
   onStatusToggle: () => void
+  onDelete: () => void
 }) {
   const { t } = useTranslation()
   return (
@@ -231,6 +281,17 @@ function RewardRow({
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onEdit}>
         <Pencil size={14} />
       </Button>
+
+      {/* Delete */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+        title={t('admin.rewards.deleteButtonTitle')}
+        onClick={onDelete}
+      >
+        <Trash2 size={14} />
+      </Button>
     </div>
   )
 }
@@ -248,6 +309,9 @@ export default function OwnerRewards() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
+  const [deleteTarget, setDeleteTarget] = useState<Reward | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     if (!ownedBusinessId) return
@@ -351,6 +415,22 @@ export default function OwnerRewards() {
     await supabase.from('rewards').update({ status: next }).eq('id', reward.id)
   }
 
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const { error } = await supabase.from('rewards').delete().eq('id', deleteTarget.id)
+    if (error) {
+      setToastVariant('error')
+      setToastMsg(t('admin.rewards.deleteFailed'))
+    } else {
+      setRewards(prev => prev.filter(r => r.id !== deleteTarget.id))
+      setToastVariant('success')
+      setToastMsg(t('admin.rewards.rewardDeleted'))
+    }
+    setDeleting(false)
+    setDeleteTarget(null)
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
@@ -392,6 +472,7 @@ export default function OwnerRewards() {
               reward={r}
               onEdit={() => openEdit(r)}
               onStatusToggle={() => toggleStatus(r)}
+              onDelete={() => setDeleteTarget(r)}
             />
           ))}
         </div>
@@ -409,7 +490,17 @@ export default function OwnerRewards() {
         />
       )}
 
-      {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
+      {deleteTarget && (
+        <DeleteConfirm
+          title={t('admin.rewards.deleteTitle')}
+          message={t('admin.rewards.deleteConfirmMessage', { name: deleteTarget.name })}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+          deleting={deleting}
+        />
+      )}
+
+      {toastMsg && <Toast message={toastMsg} variant={toastVariant} onDone={() => setToastMsg(null)} />}
     </div>
   )
 }

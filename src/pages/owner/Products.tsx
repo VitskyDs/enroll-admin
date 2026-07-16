@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { Plus, GripVertical, Pencil, Package, X, Check, Upload } from 'lucide-react'
+import { Plus, GripVertical, Pencil, Package, X, Check, Upload, Trash2, TriangleAlert } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram'
@@ -93,15 +93,63 @@ function Skeleton({ className }: { className?: string }) {
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
-function Toast({ message, onDone }: { message: string; onDone: () => void }) {
+function Toast({
+  message,
+  variant = 'success',
+  onDone,
+}: {
+  message: string
+  variant?: 'success' | 'error'
+  onDone: () => void
+}) {
   useEffect(() => {
     const t = setTimeout(onDone, 3000)
     return () => clearTimeout(t)
   }, [onDone])
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg bg-foreground text-background text-sm px-4 py-2.5 shadow-lg pointer-events-none">
-      <Check size={14} />
+    <div
+      className={cn(
+        'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg text-sm px-4 py-2.5 shadow-lg pointer-events-none',
+        variant === 'error' ? 'bg-destructive text-white/95' : 'bg-foreground text-background',
+      )}
+    >
+      {variant === 'error' ? <TriangleAlert size={14} /> : <Check size={14} />}
       {message}
+    </div>
+  )
+}
+
+function DeleteConfirm({
+  title,
+  message,
+  onCancel,
+  onConfirm,
+  deleting,
+}: {
+  title: string
+  message: string
+  onCancel: () => void
+  onConfirm: () => void
+  deleting: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-lg border bg-background p-5 shadow-xl space-y-4">
+        <div className="space-y-1.5">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onCancel} disabled={deleting}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="destructive" size="sm" onClick={onConfirm} disabled={deleting}>
+            {deleting ? t('common.deleting') : t('common.delete')}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -345,6 +393,7 @@ function ProductRow({
   hebrewOnly,
   onEdit,
   onStatusToggle,
+  onDelete,
   onDragStart,
   onDragOver,
   onDrop,
@@ -355,6 +404,7 @@ function ProductRow({
   hebrewOnly: boolean
   onEdit: () => void
   onStatusToggle: () => void
+  onDelete: () => void
   onDragStart: () => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
@@ -428,6 +478,17 @@ function ProductRow({
       <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onEdit}>
         <Pencil size={14} />
       </Button>
+
+      {/* Delete */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+        title={t('admin.products.deleteButtonTitle')}
+        onClick={onDelete}
+      >
+        <Trash2 size={14} />
+      </Button>
     </div>
   )
 }
@@ -450,6 +511,9 @@ export default function OwnerProducts() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const dragIndex = useRef<number | null>(null)
 
   const load = useCallback(async () => {
@@ -569,6 +633,22 @@ export default function OwnerProducts() {
     await supabase.from('products').update({ status: next }).eq('id', product.id)
   }
 
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    const { error } = await supabase.from('products').delete().eq('id', deleteTarget.id)
+    if (error) {
+      setToastVariant('error')
+      setToastMsg(t('admin.products.deleteFailed'))
+    } else {
+      setProducts(prev => prev.filter(p => p.id !== deleteTarget.id))
+      setToastVariant('success')
+      setToastMsg(t('admin.products.productDeleted'))
+    }
+    setDeleting(false)
+    setDeleteTarget(null)
+  }
+
   // ── Drag-to-reorder ────────────────────────────────────────────────────────
 
   function handleDragStart(i: number) {
@@ -642,6 +722,7 @@ export default function OwnerProducts() {
               hebrewOnly={hebrewOnly}
               onEdit={() => openEdit(p)}
               onStatusToggle={() => toggleStatus(p)}
+              onDelete={() => setDeleteTarget(p)}
               onDragStart={() => handleDragStart(i)}
               onDragOver={e => handleDragOver(e, i)}
               onDrop={handleDrop}
@@ -664,7 +745,17 @@ export default function OwnerProducts() {
         mode={editingId ? 'edit' : 'add'}
       />
 
-      {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
+      {deleteTarget && (
+        <DeleteConfirm
+          title={t('admin.products.deleteTitle')}
+          message={t('admin.products.deleteConfirmMessage', { name: deleteTarget.name })}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+          deleting={deleting}
+        />
+      )}
+
+      {toastMsg && <Toast message={toastMsg} variant={toastVariant} onDone={() => setToastMsg(null)} />}
     </div>
   )
 }
