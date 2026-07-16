@@ -335,8 +335,20 @@ export default function OwnerOnboarding() {
 
     const selectedProducts = extractedProducts.filter((_, i) => selectedIdxs.has(i))
     if (selectedProducts.length > 0) {
-      await supabase.from('services').insert(
-        selectedProducts.map(p => ({ business_id: biz.id, name: p.name, description: p.description, price_cents: p.price_cents, category: p.category, status: 'active' as const, image_url: null, points_value: null })),
+      await supabase.from('products').insert(
+        selectedProducts.map((p, i) => ({
+          business_id: biz.id,
+          name: p.name,
+          description: p.description,
+          price_cents: p.price_cents,
+          category: p.category,
+          status: 'active' as const,
+          kind: 'physical' as const,
+          image_urls: [],
+          points_override: null,
+          sort_order: i,
+          tags: [],
+        })),
       )
     }
 
