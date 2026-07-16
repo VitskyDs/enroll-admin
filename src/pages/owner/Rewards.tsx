@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Gift, X, Check, Upload } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useBusiness } from '@/hooks/useBusiness'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
@@ -77,6 +78,8 @@ function RewardForm({
   mode: 'add' | 'edit'
 }) {
   const { t } = useTranslation()
+  const { business } = useBusiness()
+  const hebrewOnly = business?.default_language === 'he'
   const fileRef = useRef<HTMLInputElement>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -123,6 +126,7 @@ function RewardForm({
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('admin.rewards.nameLabel')} <span className="text-destructive">*</span></label>
             <Input
+              {...(hebrewOnly ? { dir: 'rtl', lang: 'he' } : {})}
               value={draft.name}
               onChange={e => onChange({ name: e.target.value })}
               placeholder={t('admin.rewards.namePlaceholder')}
@@ -133,6 +137,7 @@ function RewardForm({
           <div className="space-y-1.5">
             <label className="text-sm font-medium">{t('admin.rewards.descriptionLabel')}</label>
             <textarea
+              {...(hebrewOnly ? { dir: 'rtl', lang: 'he' } : {})}
               value={draft.description}
               onChange={e => onChange({ description: e.target.value })}
               placeholder={t('admin.rewards.descriptionPlaceholder')}

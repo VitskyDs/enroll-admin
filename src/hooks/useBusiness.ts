@@ -1,26 +1,20 @@
-import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useCachedQuery } from '@/hooks/useCachedQuery'
-import { useTenant, setLastTenant, DEFAULT_TENANT } from '@/hooks/useTenant'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Business } from '@/types'
 
-// The active business is resolved from the URL tenant slug (`/:tenant/...`).
-// Language only changes copy — it no longer switches the active café. On global
-// routes (no tenant in the URL) we fall back to the default tenant.
+// Admin has no tenant/multi-business-per-login concept (unlike the consumer
+// app, which this hook was copy-pasted from) — the active business is always
+// the one the signed-in owner owns.
 export function useBusiness() {
-  const tenant = useTenant()
-  const slug = tenant ?? DEFAULT_TENANT
+  const { ownedBusinessId } = useAuth()
 
   const { data: business, loading } = useCachedQuery<Business | null>(
     'business',
-    slug,
-    async () => (await supabase.from('businesses').select('*').eq('slug', slug).single()).data,
+    ownedBusinessId,
+    async () => (await supabase.from('businesses').select('*').eq('id', ownedBusinessId!).single()).data,
     null,
   )
-
-  useEffect(() => {
-    if (business) setLastTenant(business.slug)
-  }, [business])
 
   return { business, loading }
 }

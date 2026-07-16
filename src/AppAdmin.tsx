@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { CurrencyProvider } from '@/contexts/CurrencyContext'
 import { OwnerLayout } from '@/components/owner-layout'
 import { LoadingScreen } from '@/components/loading-screen'
 import { Button } from '@vitskyds/enroll-ui'
@@ -97,7 +98,9 @@ function AppRoutes() {
 export default function AppAdmin() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <CurrencyProvider>
+        <AppRoutes />
+      </CurrencyProvider>
     </AuthProvider>
   )
 }

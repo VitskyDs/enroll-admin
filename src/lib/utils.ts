@@ -38,12 +38,11 @@ export function formatPrice(cents: number, currency: Currency, lang: string): st
 }
 
 export function formatCurrencyUnit(currency: Currency, lang: string): string {
-  return new Intl.NumberFormat(localeFor(lang), {
+  const parts = new Intl.NumberFormat(localeFor(lang), {
     style: 'currency',
     currency: toCurrencyCode(currency),
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(1)
+  }).formatToParts(0)
+  return parts.find(p => p.type === 'currency')?.value ?? ''
 }
 
 // Caps a redeem against the order total: the discount can never exceed the
