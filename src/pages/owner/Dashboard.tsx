@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   TrendingUp, TrendingDown, Minus, ArrowRight, AlertTriangle, CheckCircle2,
-  Search, UserPlus, Sparkles, Send, ChevronRight, Clock,
+  Search, UserPlus, Sparkles, Send, ChevronLeft, Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@vitskyds/enroll-ui'
@@ -10,31 +12,31 @@ import { useOwnerDashboard, type RecentActivity } from '@/hooks/useOwnerDashboar
 import { useAuth } from '@/contexts/AuthContext'
 import { AwardPointsDialog } from '@/components/owner/award-points-dialog'
 
-function greeting() {
+function greeting(t: TFunction) {
   const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (h < 12) return t('admin.dashboard.greetingMorning')
+  if (h < 18) return t('admin.dashboard.greetingAfternoon')
+  return t('admin.dashboard.greetingEvening')
 }
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || '?'
 }
 
-function timeAgo(iso: string) {
+function timeAgo(t: TFunction, iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.round(diff / 60_000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins} min ago`
+  if (mins < 1) return t('admin.dashboard.timeJustNow')
+  if (mins < 60) return t('admin.dashboard.timeMinAgo', { count: mins })
   const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs} hr ago`
+  if (hrs < 24) return t('admin.dashboard.timeHrAgo', { count: hrs })
   const days = Math.round(hrs / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
+  return t('admin.dashboard.timeDayAgo', { count: days })
 }
 
-function activityLabel(a: RecentActivity) {
-  if (a.reason === 'redemption' || a.points < 0) return `Redeemed ${Math.abs(a.points)} points`
-  return `Earned ${a.points} points`
+function activityLabel(t: TFunction, a: RecentActivity) {
+  if (a.reason === 'redemption' || a.points < 0) return t('admin.dashboard.activityRedeemed', { count: Math.abs(a.points) })
+  return t('admin.dashboard.activityEarned', { count: a.points })
 }
 
 function Skeleton({ className }: { className?: string }) {
@@ -56,6 +58,7 @@ function StatCard({ label, value, sub, loading }: { label: string; value: number
 }
 
 function LoyaltyStrengthCard({ score, delta, loading }: { score: number; delta: number | null; loading: boolean }) {
+  const { t } = useTranslation()
   const trendIcon =
     delta === null ? <Minus size={14} className="text-muted-foreground" /> :
     delta > 0 ? <TrendingUp size={14} className="text-emerald-500" /> :
@@ -64,13 +67,12 @@ function LoyaltyStrengthCard({ score, delta, loading }: { score: number; delta: 
 
   const trendLabel =
     delta === null ? null :
-    delta > 0 ? `+${delta} vs last month` :
-    delta < 0 ? `${delta} vs last month` :
-    'No change vs last month'
+    delta !== 0 ? t('admin.dashboard.trendVsLastMonth', { delta: delta > 0 ? `+${delta}` : delta }) :
+    t('admin.dashboard.trendNoChange')
 
   return (
     <div className="rounded-lg border bg-card p-5 flex flex-col gap-1 col-span-full sm:col-span-2">
-      <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Loyalty strength</span>
+      <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{t('admin.dashboard.loyaltyStrength')}</span>
       {loading ? (
         <div className="flex items-end gap-3 mt-1">
           <Skeleton className="h-10 w-16" />
@@ -93,13 +95,14 @@ function LoyaltyStrengthCard({ score, delta, loading }: { score: number; delta: 
 }
 
 function CatchUpBanner({ count, loading }: { count: number; loading: boolean }) {
+  const { t } = useTranslation()
   if (loading) return <Skeleton className="h-16 w-full rounded-lg" />
 
   if (count === 0) {
     return (
       <div className="flex items-center gap-3 rounded-lg border bg-card px-5 py-4">
         <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
-        <span className="text-sm font-medium">All customers are engaged</span>
+        <span className="text-sm font-medium">{t('admin.dashboard.allEngaged')}</span>
       </div>
     )
   }
@@ -112,17 +115,18 @@ function CatchUpBanner({ count, loading }: { count: number; loading: boolean }) 
       <AlertTriangle size={20} className="text-amber-500 shrink-0" />
       <div className="flex-1 min-w-0">
         <span className="text-sm font-medium">
-          {count} {count === 1 ? 'customer needs' : 'customers need'} your attention
+          {t('admin.dashboard.attentionNeeded', { count })}
         </span>
       </div>
       <span className="flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-400 shrink-0 group-hover:gap-2 transition-all">
-        Catch up <ArrowRight size={14} />
+        {t('admin.nav.catchUp')} <ArrowRight size={14} />
       </span>
     </Link>
   )
 }
 
 function CustomerSearch() {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
 
@@ -133,25 +137,26 @@ function CustomerSearch() {
 
   return (
     <form onSubmit={handleSubmit} className="relative">
-      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <Search size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
       <Input
         value={query}
         onChange={e => setQuery(e.target.value)}
-        placeholder="Find a customer by name, phone or email…"
-        className="pl-10 h-11"
-        aria-label="Find a customer"
+        placeholder={t('admin.dashboard.searchPlaceholder')}
+        className="pr-10 h-11"
+        aria-label={t('admin.dashboard.searchAriaLabel')}
       />
     </form>
   )
 }
 
 function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loading: boolean }) {
+  const { t } = useTranslation()
   return (
     <div className="rounded-lg border bg-card flex flex-col">
       <div className="flex items-center justify-between border-b px-5 py-3">
-        <span className="text-sm font-medium">Recent activity</span>
+        <span className="text-sm font-medium">{t('admin.dashboard.recentActivity')}</span>
         <Link to="/owner/customers" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          View all <ChevronRight size={13} />
+          {t('admin.dashboard.viewAll')} <ChevronLeft size={13} />
         </Link>
       </div>
       {loading ? (
@@ -167,7 +172,7 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="px-5 py-10 text-center text-sm text-muted-foreground">No activity yet</div>
+        <div className="px-5 py-10 text-center text-sm text-muted-foreground">{t('admin.dashboard.noActivity')}</div>
       ) : (
         <ul className="divide-y">
           {items.map(a => (
@@ -177,10 +182,10 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{a.customerName}</p>
-                <p className="text-xs text-muted-foreground truncate">{activityLabel(a)}</p>
+                <p className="text-xs text-muted-foreground truncate">{activityLabel(t, a)}</p>
               </div>
               <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                <Clock size={11} /> {timeAgo(a.createdAt)}
+                <Clock size={11} /> {timeAgo(t, a.createdAt)}
               </span>
             </li>
           ))}
@@ -191,9 +196,9 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
 }
 
 const QUICK_ACTIONS = [
-  { to: '/owner/customers', icon: UserPlus, title: 'Add a customer', desc: 'Register a walk-in or new member' },
-  { to: null, icon: Sparkles, title: 'Award points manually', desc: 'Credit a customer for a visit' },
-  { to: '/owner/catch-up', icon: Send, title: 'Send a catch-up message', desc: 'Re-engage lapsed customers' },
+  { to: '/owner/customers', icon: UserPlus, titleKey: 'admin.dashboard.addCustomer', descKey: 'admin.dashboard.addCustomerDesc' },
+  { to: null, icon: Sparkles, titleKey: 'admin.awardPoints.title', descKey: 'admin.dashboard.awardPointsDesc' },
+  { to: '/owner/catch-up', icon: Send, titleKey: 'admin.dashboard.sendCatchUp', descKey: 'admin.dashboard.sendCatchUpDesc' },
 ]
 
 function QuickActionsCard({
@@ -205,25 +210,26 @@ function QuickActionsCard({
   loading: boolean
   onAwardPoints: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="rounded-lg border bg-card flex flex-col">
       <div className="border-b px-5 py-3">
-        <span className="text-sm font-medium">Quick actions</span>
+        <span className="text-sm font-medium">{t('admin.dashboard.quickActions')}</span>
       </div>
       <ul className="divide-y">
-        {QUICK_ACTIONS.map(({ to, icon: Icon, title, desc }) => {
+        {QUICK_ACTIONS.map(({ to, icon: Icon, titleKey, descKey }) => {
           const inner = (
             <>
               <Icon size={16} className="text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{title}</p>
-                <p className="text-xs text-muted-foreground">{desc}</p>
+                <p className="text-sm font-medium">{t(titleKey)}</p>
+                <p className="text-xs text-muted-foreground">{t(descKey)}</p>
               </div>
-              <ChevronRight size={15} className="text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronLeft size={15} className="text-muted-foreground shrink-0 group-hover:-translate-x-0.5 transition-transform" />
             </>
           )
           return (
-            <li key={title}>
+            <li key={titleKey}>
               {to ? (
                 <Link to={to} className="flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group">
                   {inner}
@@ -232,7 +238,7 @@ function QuickActionsCard({
                 <button
                   type="button"
                   onClick={onAwardPoints}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group text-left"
+                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group"
                 >
                   {inner}
                 </button>
@@ -244,9 +250,9 @@ function QuickActionsCard({
       {!loading && atRiskCount > 0 && (
         <div className="border-t bg-muted/30 px-5 py-3 rounded-b-lg">
           <p className="text-xs">
-            <span className="font-medium">{atRiskCount} customers</span>
-            <span className="text-muted-foreground"> haven't visited recently. </span>
-            <Link to="/owner/catch-up" className="font-medium underline underline-offset-2">View lapsed customers</Link>
+            <span className="font-medium">{t('admin.dashboard.lapsedCount', { count: atRiskCount })}</span>
+            <span className="text-muted-foreground"> {t('admin.dashboard.lapsedDesc')} </span>
+            <Link to="/owner/catch-up" className="font-medium underline underline-offset-2">{t('admin.dashboard.viewLapsedCustomers')}</Link>
           </p>
         </div>
       )}
@@ -255,6 +261,7 @@ function QuickActionsCard({
 }
 
 export default function OwnerDashboard() {
+  const { t } = useTranslation()
   const { stats, businessName, recentActivity, loading, refresh } = useOwnerDashboard()
   const { ownedBusinessId } = useAuth()
   const [awardOpen, setAwardOpen] = useState(false)
@@ -263,10 +270,10 @@ export default function OwnerDashboard() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-semibold">
-          {greeting()}{businessName ? `, ${businessName}` : ''}
+          {greeting(t)}{businessName ? `, ${businessName}` : ''}
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Here's what's happening with your loyalty program today.
+          {t('admin.dashboard.subtitle')}
         </p>
       </div>
 
@@ -280,11 +287,11 @@ export default function OwnerDashboard() {
           delta={stats?.loyaltyStrengthDelta ?? null}
           loading={loading}
         />
-        <StatCard label="Active members" value={stats?.activeMembers ?? 0} loading={loading} />
-        <StatCard label="Total members" value={stats?.totalMembers ?? 0} loading={loading} />
-        <StatCard label="Points issued this month" value={stats?.pointsIssuedThisMonth ?? 0} loading={loading} />
-        <StatCard label="Redemptions this month" value={stats?.redemptionsThisMonth ?? 0} loading={loading} />
-        <StatCard label="New members this week" value={stats?.newMembersThisWeek ?? 0} loading={loading} />
+        <StatCard label={t('admin.dashboard.activeMembers')} value={stats?.activeMembers ?? 0} loading={loading} />
+        <StatCard label={t('admin.dashboard.totalMembers')} value={stats?.totalMembers ?? 0} loading={loading} />
+        <StatCard label={t('admin.dashboard.pointsIssuedThisMonth')} value={stats?.pointsIssuedThisMonth ?? 0} loading={loading} />
+        <StatCard label={t('admin.dashboard.redemptionsThisMonth')} value={stats?.redemptionsThisMonth ?? 0} loading={loading} />
+        <StatCard label={t('admin.dashboard.newMembersThisWeek')} value={stats?.newMembersThisWeek ?? 0} loading={loading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">

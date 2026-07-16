@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { ArrowLeft, ArrowRight, Gift, Star, Bell, CheckCheck, Clock, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -34,16 +36,29 @@ type HistoryAction = {
 
 type ActionType = 'gift_points' | 'send_reward' | 'dismiss'
 
-function daysSince(dateStr: string | null): string {
-  if (!dateStr) return 'Never visited'
+function relativeVisit(t: TFunction, dateStr: string | null): string {
+  if (!dateStr) return t('admin.catchUp.neverVisited')
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  return `${days} days ago`
+  if (days === 0) return t('admin.customerDetail.today')
+  if (days === 1) return t('admin.customerDetail.yesterday')
+  if (days < 7) return t('admin.customerDetail.daysAgo', { count: days })
+  if (days < 30) return t('admin.customerDetail.weeksAgo', { count: Math.floor(days / 7) })
+  if (days < 365) return t('admin.customerDetail.monthsAgo', { count: Math.floor(days / 30) })
+  return t('admin.customerDetail.yearsAgo', { count: Math.floor(days / 365) })
 }
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+}
+
+function tierLabel(t: TFunction, tier: string | null) {
+  if (!tier) return null
+  switch (tier.toLowerCase()) {
+    case 'gold': return t('admin.customers.tierGold')
+    case 'silver': return t('admin.customers.tierSilver')
+    case 'bronze': return t('admin.customers.tierBronze')
+    default: return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase()
+  }
 }
 
 function Avatar({ name }: { name: string }) {
@@ -54,20 +69,21 @@ function Avatar({ name }: { name: string }) {
   )
 }
 
-function actionLabel(type: HistoryAction['action_type']) {
-  if (type === 'gift_points') return 'Gifted points'
-  if (type === 'send_reward') return 'Sent reward'
-  if (type === 'send_reminder') return 'Sent reminder'
-  return 'Dismissed'
+function actionLabel(t: TFunction, type: HistoryAction['action_type']) {
+  if (type === 'gift_points') return t('admin.catchUp.actionGiftedPoints')
+  if (type === 'send_reward') return t('admin.catchUp.actionSentReward')
+  if (type === 'send_reminder') return t('admin.catchUp.actionSentReminder')
+  return t('admin.catchUp.actionDismissed')
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('he-IL', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── History tab ────────────────────────────────────────────────────────────
 
 function HistoryTab({ businessId }: { businessId: string }) {
+  const { t } = useTranslation()
   const [actions, setActions] = useState<HistoryAction[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -88,7 +104,7 @@ function HistoryTab({ businessId }: { businessId: string }) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <span className="text-sm text-muted-foreground">Loading history…</span>
+        <span className="text-sm text-muted-foreground">{t('admin.catchUp.loadingHistory')}</span>
       </div>
     )
   }
@@ -96,7 +112,7 @@ function HistoryTab({ businessId }: { businessId: string }) {
   if (actions.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No actions yet</p>
+        <p className="text-sm text-muted-foreground">{t('admin.catchUp.noActionsYet')}</p>
       </div>
     )
   }
@@ -113,12 +129,12 @@ function HistoryTab({ businessId }: { businessId: string }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium truncate">{a.customer?.name ?? 'Unknown'}</span>
+                <span className="text-sm font-medium truncate">{a.customer?.name ?? t('admin.catchUp.unknownCustomer')}</span>
                 <span className="text-xs text-muted-foreground shrink-0">{formatDate(a.created_at)}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {actionLabel(a.action_type)}
-                {a.action_type === 'gift_points' && a.points_gifted != null && ` · ${a.points_gifted} pts`}
+                {actionLabel(t, a.action_type)}
+                {a.action_type === 'gift_points' && a.points_gifted != null && ` · ${t('admin.customers.ptsSuffix', { count: a.points_gifted })}`}
                 {a.action_type === 'send_reward' && a.reward?.name && ` · ${a.reward.name}`}
               </p>
               {a.note && <p className="text-xs text-muted-foreground mt-0.5 italic">"{a.note}"</p>}
@@ -149,6 +165,7 @@ function CustomerCard({
   onPrev: () => void
   submitting: boolean
 }) {
+  const { t } = useTranslation()
   const [actionType, setActionType] = useState<ActionType>('gift_points')
   const [giftPoints, setGiftPoints] = useState('')
   const [giftNote, setGiftNote] = useState('')
@@ -184,7 +201,7 @@ function CustomerCard({
       {/* Progress */}
       <div className="w-full max-w-md mb-6">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-          <span>{index + 1} of {total}</span>
+          <span>{t('admin.catchUp.progressOf', { index: index + 1, total })}</span>
           <span>{Math.round(((index + 1) / total) * 100)}%</span>
         </div>
         <div className="h-1 rounded-full bg-muted overflow-hidden">
@@ -205,16 +222,16 @@ function CustomerCard({
               <span className="font-semibold text-lg leading-tight">{customer.name}</span>
               {customer.tier && (
                 <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-full">
-                  {customer.tier}
+                  {tierLabel(t, customer.tier)}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock size={12} />
-                Last seen {daysSince(customer.last_visit_at)}
+                {t('admin.catchUp.lastSeen', { time: relativeVisit(t, customer.last_visit_at) })}
               </span>
-              <span>{customer.points.toLocaleString()} pts</span>
+              <span>{t('admin.customers.ptsSuffix', { count: customer.points })}</span>
             </div>
           </div>
         </div>
@@ -228,13 +245,13 @@ function CustomerCard({
 
         {/* Action selector */}
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Action</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('admin.catchUp.actionSectionLabel')}</p>
           <div className="grid grid-cols-3 gap-2">
             {(
               [
-                { type: 'gift_points' as ActionType, label: 'Gift points', icon: Gift },
-                { type: 'send_reward' as ActionType, label: 'Send reward', icon: Star },
-                { type: 'dismiss' as ActionType, label: 'Dismiss', icon: CheckCheck },
+                { type: 'gift_points' as ActionType, label: t('admin.catchUp.actionGiftPoints'), icon: Gift },
+                { type: 'send_reward' as ActionType, label: t('admin.catchUp.actionSendReward'), icon: Star },
+                { type: 'dismiss' as ActionType, label: t('admin.catchUp.actionDismiss'), icon: CheckCheck },
               ] as const
             ).map(({ type, label, icon: Icon }) => (
               <button
@@ -254,13 +271,13 @@ function CustomerCard({
           </div>
 
           {/* Disabled reminder button shown below */}
-          <div title="Notification channels coming soon" className="w-full">
+          <div title={t('admin.catchUp.reminderComingSoonTitle')} className="w-full">
             <button
               disabled
               className="flex items-center gap-2 w-full rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground cursor-not-allowed opacity-50"
             >
               <Bell size={14} />
-              Send a reminder — coming soon
+              {t('admin.catchUp.reminderButtonLabel')}
             </button>
           </div>
         </div>
@@ -269,20 +286,20 @@ function CustomerCard({
         {actionType === 'gift_points' && (
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Points to gift</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('admin.catchUp.giftPointsLabel')}</label>
               <Input
                 type="number"
                 min={1}
-                placeholder="e.g. 50"
+                placeholder={t('admin.catchUp.giftPointsPlaceholder')}
                 value={giftPoints}
                 onChange={e => setGiftPoints(e.target.value)}
                 className="mt-1"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('admin.catchUp.noteLabel')}</label>
               <Input
-                placeholder="e.g. Thanks for being a loyal customer"
+                placeholder={t('admin.catchUp.notePlaceholder')}
                 value={giftNote}
                 onChange={e => setGiftNote(e.target.value)}
                 className="mt-1"
@@ -293,9 +310,9 @@ function CustomerCard({
 
         {actionType === 'send_reward' && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Choose reward</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('admin.catchUp.chooseRewardLabel')}</label>
             {rewards.length === 0 ? (
-              <p className="text-xs text-muted-foreground mt-2">No active rewards — add rewards first.</p>
+              <p className="text-xs text-muted-foreground mt-2">{t('admin.catchUp.noActiveRewards')}</p>
             ) : (
               <select
                 value={rewardId}
@@ -304,7 +321,7 @@ function CustomerCard({
               >
                 {rewards.map(r => (
                   <option key={r.id} value={r.id}>
-                    {r.name} ({r.points_cost} pts)
+                    {r.name} ({t('admin.customers.ptsSuffix', { count: r.points_cost })})
                   </option>
                 ))}
               </select>
@@ -322,8 +339,8 @@ function CustomerCard({
           disabled={index === 0}
           className="gap-1.5"
         >
-          <ArrowLeft size={16} />
-          Back
+          <ArrowRight size={16} />
+          {t('common.back')}
         </Button>
 
         <Button
@@ -332,9 +349,9 @@ function CustomerCard({
           className="gap-1.5 flex-1"
         >
           {actionType === 'dismiss' ? (
-            <>Dismiss & continue</>
+            <>{t('admin.catchUp.dismissAndContinue')}</>
           ) : (
-            <>Send & continue <ArrowRight size={16} /></>
+            <>{t('admin.catchUp.sendAndContinue')} <ArrowLeft size={16} /></>
           )}
         </Button>
       </div>
@@ -345,6 +362,7 @@ function CustomerCard({
 // ─── Summary screen ──────────────────────────────────────────────────────────
 
 function SummaryScreen({ actedCount, onDone }: { actedCount: number; onDone: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 text-center">
       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
@@ -353,14 +371,14 @@ function SummaryScreen({ actedCount, onDone }: { actedCount: number; onDone: () 
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">
           {actedCount > 0
-            ? `You reached out to ${actedCount} ${actedCount === 1 ? 'customer' : 'customers'} today.`
-            : 'All caught up.'}
+            ? t('admin.catchUp.reachedOut', { count: actedCount })
+            : t('admin.catchUp.allCaughtUp')}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Check back tomorrow to see how things are going.
+          {t('admin.catchUp.checkBackTomorrow')}
         </p>
       </div>
-      <Button onClick={onDone}>Done</Button>
+      <Button onClick={onDone}>{t('admin.catchUp.doneButton')}</Button>
     </div>
   )
 }
@@ -370,6 +388,7 @@ function SummaryScreen({ actedCount, onDone }: { actedCount: number; onDone: () 
 type Tab = 'flow' | 'history'
 
 export default function CatchUp() {
+  const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
   const navigate = useNavigate()
 
@@ -502,9 +521,9 @@ export default function CatchUp() {
           size="icon"
           className="h-8 w-8 shrink-0"
           onClick={() => navigate('/owner/dashboard')}
-          aria-label="Back to dashboard"
+          aria-label={t('admin.catchUp.backToDashboard')}
         >
-          <ArrowLeft size={18} />
+          <ArrowRight size={18} />
         </Button>
 
         <div className="flex-1 flex items-center justify-center">
@@ -516,7 +535,7 @@ export default function CatchUp() {
                 tab === 'flow' ? 'bg-foreground text-background' : 'hover:bg-muted',
               )}
             >
-              Catch up
+              {t('admin.nav.catchUp')}
             </button>
             <button
               onClick={() => setTab('history')}
@@ -525,7 +544,7 @@ export default function CatchUp() {
                 tab === 'history' ? 'bg-foreground text-background' : 'hover:bg-muted',
               )}
             >
-              History
+              {t('admin.catchUp.historyTab')}
             </button>
           </div>
         </div>
@@ -547,7 +566,7 @@ export default function CatchUp() {
         >
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">Loading…</span>
+              <span className="text-sm text-muted-foreground">{t('common.loading')}</span>
             </div>
           ) : done ? (
             <SummaryScreen actedCount={actedCount} onDone={() => navigate('/owner/dashboard')} />
@@ -555,11 +574,11 @@ export default function CatchUp() {
             <div className="flex-1 flex flex-col items-center justify-center gap-4 px-4 text-center">
               <CheckCheck size={40} className="text-muted-foreground" />
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold">All customers are active</h2>
-                <p className="text-sm text-muted-foreground">Check back tomorrow.</p>
+                <h2 className="text-lg font-semibold">{t('admin.catchUp.allActiveTitle')}</h2>
+                <p className="text-sm text-muted-foreground">{t('admin.catchUp.checkBackTomorrowShort')}</p>
               </div>
               <Button variant="outline" onClick={() => navigate('/owner/dashboard')}>
-                Back to dashboard
+                {t('admin.catchUp.backToDashboard')}
               </Button>
             </div>
           ) : (

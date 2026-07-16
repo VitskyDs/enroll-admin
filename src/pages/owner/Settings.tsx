@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Upload, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -9,20 +10,20 @@ import { cn } from '@/lib/utils'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const INDUSTRIES = [
-  { value: 'food_and_beverage',     label: 'Food & beverage' },
-  { value: 'health_and_beauty',     label: 'Health & beauty' },
-  { value: 'fitness_and_wellness',  label: 'Fitness & wellness' },
-  { value: 'retail_specialty',      label: 'Retail — specialty' },
-  { value: 'retail_general',        label: 'Retail — general' },
-  { value: 'ecommerce',             label: 'E-commerce' },
-  { value: 'hospitality_and_travel',label: 'Hospitality & travel' },
-  { value: 'professional_services', label: 'Professional services' },
-  { value: 'automotive',            label: 'Automotive' },
-  { value: 'grocery_and_pharmacy',  label: 'Grocery & pharmacy' },
-  { value: 'financial_services',    label: 'Financial services' },
-  { value: 'entertainment',         label: 'Entertainment' },
-  { value: 'other',                 label: 'Other' },
-]
+  { value: 'food_and_beverage',      labelKey: 'admin.settings.industryFoodAndBeverage' },
+  { value: 'health_and_beauty',      labelKey: 'admin.settings.industryHealthAndBeauty' },
+  { value: 'fitness_and_wellness',   labelKey: 'admin.settings.industryFitnessAndWellness' },
+  { value: 'retail_specialty',       labelKey: 'admin.settings.industryRetailSpecialty' },
+  { value: 'retail_general',         labelKey: 'admin.settings.industryRetailGeneral' },
+  { value: 'ecommerce',              labelKey: 'admin.settings.industryEcommerce' },
+  { value: 'hospitality_and_travel', labelKey: 'admin.settings.industryHospitalityAndTravel' },
+  { value: 'professional_services',  labelKey: 'admin.settings.industryProfessionalServices' },
+  { value: 'automotive',             labelKey: 'admin.settings.industryAutomotive' },
+  { value: 'grocery_and_pharmacy',   labelKey: 'admin.settings.industryGroceryAndPharmacy' },
+  { value: 'financial_services',     labelKey: 'admin.settings.industryFinancialServices' },
+  { value: 'entertainment',          labelKey: 'admin.settings.industryEntertainment' },
+  { value: 'other',                  labelKey: 'admin.settings.industryOther' },
+] as const
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -75,6 +76,7 @@ function ImageUploadField({
   preview: string | null
   onFile: (f: File) => void
 }) {
+  const { t } = useTranslation()
   const ref = useRef<HTMLInputElement>(null)
   return (
     <div className="space-y-1.5">
@@ -91,7 +93,7 @@ function ImageUploadField({
         ) : (
           <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
             <Upload size={18} />
-            <span className="text-xs">Click to upload</span>
+            <span className="text-xs">{t('admin.rewards.clickToUpload')}</span>
           </div>
         )}
       </div>
@@ -106,6 +108,7 @@ function ImageUploadField({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerSettings() {
+  const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -180,7 +183,7 @@ export default function OwnerSettings() {
     setSlugAvailable(false)
     setErrors(prev => {
       if (next === originalSlug) { if (!prev.slug) return prev; const n = { ...prev }; delete n.slug; return n }
-      if (!SLUG_RE.test(next)) return { ...prev, slug: 'Slug must be lowercase letters, numbers, and hyphens only.' }
+      if (!SLUG_RE.test(next)) return { ...prev, slug: t('admin.settings.slugFormatInvalid') }
       if (!prev.slug) return prev
       const n = { ...prev }; delete n.slug; return n
     })
@@ -195,7 +198,7 @@ export default function OwnerSettings() {
       setSlugAvailable(!taken)
       setErrors(prev => {
         if (!taken) { if (!prev.slug) return prev; const n = { ...prev }; delete n.slug; return n }
-        return { ...prev, slug: 'This slug is already taken.' }
+        return { ...prev, slug: t('admin.settings.slugTaken') }
       })
     }, 400)
     return () => clearTimeout(handle)
@@ -216,13 +219,13 @@ export default function OwnerSettings() {
   async function handleSave() {
     const trimmedSlug = slug.trim()
     const errs: Record<string, string> = {}
-    if (!name.trim()) errs.name = 'Business name is required.'
-    if (!trimmedSlug) errs.slug = 'Slug is required.'
-    else if (!SLUG_RE.test(trimmedSlug)) errs.slug = 'Slug must be lowercase letters, numbers, and hyphens only.'
+    if (!name.trim()) errs.name = t('admin.settings.businessNameRequired')
+    if (!trimmedSlug) errs.slug = t('admin.settings.slugRequired')
+    else if (!SLUG_RE.test(trimmedSlug)) errs.slug = t('admin.settings.slugFormatInvalid')
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     if (await isSlugTaken(trimmedSlug)) {
-      setErrors(prev => ({ ...prev, slug: 'This slug is already taken.' }))
+      setErrors(prev => ({ ...prev, slug: t('admin.settings.slugTaken') }))
       return
     }
 
@@ -266,7 +269,7 @@ export default function OwnerSettings() {
     setLogoFile(null)
     setCoverFile(null)
     if (currency) setCurrencyLocked(true)
-    setToast('Settings saved')
+    setToast(t('admin.settings.settingsSaved'))
   }
 
   if (loading) {
@@ -285,24 +288,24 @@ export default function OwnerSettings() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
-      <h1 className="text-xl font-semibold">Business profile</h1>
+      <h1 className="text-xl font-semibold">{t('admin.settings.pageTitle')}</h1>
 
       {/* Basic info */}
       <section className="rounded-lg border bg-card">
         <div className="px-5 py-4 border-b">
-          <h2 className="font-semibold text-sm">Basic info</h2>
+          <h2 className="font-semibold text-sm">{t('admin.settings.basicInfoTitle')}</h2>
         </div>
         <div className="px-5 py-4 space-y-4">
-          <Field label="Business name" error={errors.name}>
+          <Field label={t('admin.settings.businessNameLabel')} error={errors.name}>
             <Input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Corner Cup"
+              placeholder={t('admin.settings.businessNamePlaceholder')}
             />
           </Field>
           <Field
-            label="Slug"
-            hint="Used in your enrollment link. Lowercase letters, numbers, and hyphens."
+            label={t('admin.settings.slugLabel')}
+            hint={t('admin.settings.slugHint')}
             error={errors.slug}
           >
             <div className="flex items-center gap-2">
@@ -318,44 +321,44 @@ export default function OwnerSettings() {
                   <Check
                     size={14}
                     role="img"
-                    aria-label="Slug is available"
+                    aria-label={t('admin.settings.slugAvailableAriaLabel')}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600"
                   />
                 )}
               </div>
             </div>
           </Field>
-          <Field label="Tagline">
+          <Field label={t('admin.settings.taglineLabel')}>
             <Input
               value={tagline}
               onChange={e => setTagline(e.target.value)}
-              placeholder="Your neighborhood coffee shop"
+              placeholder={t('admin.settings.taglinePlaceholder')}
             />
           </Field>
-          <Field label="Industry">
+          <Field label={t('admin.settings.industryLabel')}>
             <select
               value={industry}
               onChange={e => setIndustry(e.target.value)}
               className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
             >
-              <option value="">Select industry</option>
+              <option value="">{t('admin.settings.selectIndustryPlaceholder')}</option>
               {INDUSTRIES.map(i => (
-                <option key={i.value} value={i.value}>{i.label}</option>
+                <option key={i.value} value={i.value}>{t(i.labelKey)}</option>
               ))}
             </select>
           </Field>
-          <Field label="Address">
+          <Field label={t('admin.settings.addressLabel')}>
             <Input
               value={address}
               onChange={e => setAddress(e.target.value)}
-              placeholder="123 Main St, City, State"
+              placeholder={t('admin.settings.addressPlaceholder')}
             />
           </Field>
-          <Field label="Hours" hint="e.g. Mon–Fri 7am–6pm, Sat–Sun 8am–4pm">
+          <Field label={t('admin.settings.hoursLabel')} hint={t('admin.settings.hoursHint')}>
             <Input
               value={hours}
               onChange={e => setHours(e.target.value)}
-              placeholder="Mon–Fri 7am–6pm"
+              placeholder={t('admin.settings.hoursPlaceholder')}
             />
           </Field>
         </div>
@@ -364,16 +367,16 @@ export default function OwnerSettings() {
       {/* Images */}
       <section className="rounded-lg border bg-card">
         <div className="px-5 py-4 border-b">
-          <h2 className="font-semibold text-sm">Images</h2>
+          <h2 className="font-semibold text-sm">{t('admin.settings.imagesTitle')}</h2>
         </div>
         <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ImageUploadField
-            label="Logo"
+            label={t('admin.settings.logoLabel')}
             preview={logoPreview}
             onFile={f => { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)) }}
           />
           <ImageUploadField
-            label="Cover image"
+            label={t('admin.settings.coverImageLabel')}
             preview={coverPreview}
             onFile={f => { setCoverFile(f); setCoverPreview(URL.createObjectURL(f)) }}
           />
@@ -383,15 +386,15 @@ export default function OwnerSettings() {
       {/* Store currency */}
       <section className="rounded-lg border bg-card">
         <div className="px-5 py-4 border-b">
-          <h2 className="font-semibold text-sm">Store currency</h2>
+          <h2 className="font-semibold text-sm">{t('admin.settings.currencyTitle')}</h2>
         </div>
         <div className="px-5 py-4">
           <Field
-            label="Currency"
+            label={t('admin.settings.currencyLabel')}
             hint={
               currencyLocked
-                ? 'Currency is locked once set and can no longer be changed.'
-                : "Locking a currency hides the switcher for customers — they'll always see this currency."
+                ? t('admin.settings.currencyLockedHint')
+                : t('admin.settings.currencyUnlockedHint')
             }
           >
             {currencyLocked ? (
@@ -401,7 +404,7 @@ export default function OwnerSettings() {
             ) : (
               <div className="flex items-center gap-1 rounded-full bg-secondary p-1 w-fit">
                 {([
-                  { value: '', label: 'Not set' },
+                  { value: '', label: t('admin.settings.currencyNotSet') },
                   { value: 'usd', label: '$ USD' },
                   { value: 'ils', label: '₪ ILS' },
                 ] as const).map(opt => (
@@ -427,7 +430,7 @@ export default function OwnerSettings() {
       {/* Brand color */}
       <section className="rounded-lg border bg-card">
         <div className="px-5 py-4 border-b">
-          <h2 className="font-semibold text-sm">Brand color</h2>
+          <h2 className="font-semibold text-sm">{t('admin.settings.brandColorTitle')}</h2>
         </div>
         <div className="px-5 py-4">
           <div className="flex items-center gap-3">
@@ -457,7 +460,7 @@ export default function OwnerSettings() {
       {errors.save && <p className="text-sm text-destructive">{errors.save}</p>}
 
       <Button onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving…' : 'Save changes'}
+        {saving ? t('common.saving') : t('admin.settings.saveChanges')}
       </Button>
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}

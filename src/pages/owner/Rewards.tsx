@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Pencil, Gift, X, Check, Upload } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -75,6 +76,7 @@ function RewardForm({
   error: string | null
   mode: 'add' | 'edit'
 }) {
+  const { t } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -88,7 +90,7 @@ function RewardForm({
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <aside className="relative ml-auto w-full max-w-md bg-background border-l flex flex-col shadow-xl">
         <div className="flex items-center justify-between h-14 border-b px-5 shrink-0">
-          <span className="font-semibold text-sm">{mode === 'add' ? 'Add reward' : 'Edit reward'}</span>
+          <span className="font-semibold text-sm">{mode === 'add' ? t('admin.rewards.addTitle') : t('admin.rewards.editTitle')}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
             <X size={16} />
           </Button>
@@ -97,7 +99,7 @@ function RewardForm({
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Image */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Image</label>
+            <label className="text-sm font-medium">{t('admin.rewards.imageLabel')}</label>
             <div
               onClick={() => fileRef.current?.click()}
               className={cn(
@@ -106,11 +108,11 @@ function RewardForm({
               )}
             >
               {draft.imagePreview ? (
-                <img src={draft.imagePreview} alt="Preview" className="w-full h-40 object-cover" />
+                <img src={draft.imagePreview} alt={t('admin.rewards.imageLabel')} className="w-full h-40 object-cover" />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <Upload size={20} />
-                  <span className="text-xs">Click to upload</span>
+                  <span className="text-xs">{t('admin.rewards.clickToUpload')}</span>
                 </div>
               )}
             </div>
@@ -119,21 +121,21 @@ function RewardForm({
 
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Name <span className="text-destructive">*</span></label>
+            <label className="text-sm font-medium">{t('admin.rewards.nameLabel')} <span className="text-destructive">*</span></label>
             <Input
               value={draft.name}
               onChange={e => onChange({ name: e.target.value })}
-              placeholder="e.g. Free drip coffee"
+              placeholder={t('admin.rewards.namePlaceholder')}
             />
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Description</label>
+            <label className="text-sm font-medium">{t('admin.rewards.descriptionLabel')}</label>
             <textarea
               value={draft.description}
               onChange={e => onChange({ description: e.target.value })}
-              placeholder="Optional description"
+              placeholder={t('admin.rewards.descriptionPlaceholder')}
               rows={3}
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
@@ -142,24 +144,24 @@ function RewardForm({
           {/* Points cost + Status */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Points cost <span className="text-destructive">*</span></label>
+              <label className="text-sm font-medium">{t('admin.rewards.pointsCostLabel')} <span className="text-destructive">*</span></label>
               <Input
                 type="number"
                 min="1"
-                placeholder="e.g. 50"
+                placeholder={t('admin.rewards.pointsCostPlaceholder')}
                 value={draft.points_cost}
                 onChange={e => onChange({ points_cost: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{t('admin.rewards.statusLabel')}</label>
               <select
                 value={draft.status}
                 onChange={e => onChange({ status: e.target.value as RewardStatus })}
                 className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">{t('status.active')}</option>
+                <option value="inactive">{t('status.inactive')}</option>
               </select>
             </div>
           </div>
@@ -169,7 +171,7 @@ function RewardForm({
 
         <div className="border-t p-4 shrink-0">
           <Button className="w-full" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : mode === 'add' ? 'Add reward' : 'Save changes'}
+            {saving ? t('common.saving') : mode === 'add' ? t('admin.rewards.addTitle') : t('admin.rewards.saveChanges')}
           </Button>
         </div>
       </aside>
@@ -188,6 +190,7 @@ function RewardRow({
   onEdit: () => void
   onStatusToggle: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-3 rounded-lg border p-3 bg-card">
       {/* Thumbnail */}
@@ -202,13 +205,13 @@ function RewardRow({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{reward.name}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">{reward.points_cost.toLocaleString()} pts</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{t('admin.customers.ptsSuffix', { count: reward.points_cost })}</div>
       </div>
 
       {/* Status toggle */}
       <button
         onClick={onStatusToggle}
-        title="Click to toggle status"
+        title={t('admin.rewards.toggleStatusTitle')}
         className={cn(
           'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium shrink-0 transition-colors',
           reward.status === 'active'
@@ -216,7 +219,7 @@ function RewardRow({
             : 'text-zinc-500 bg-zinc-50 border-zinc-200 dark:bg-zinc-800/30 dark:border-zinc-700',
         )}
       >
-        {reward.status === 'active' ? 'Active' : 'Inactive'}
+        {reward.status === 'active' ? t('status.active') : t('status.inactive')}
       </button>
 
       {/* Edit */}
@@ -230,6 +233,7 @@ function RewardRow({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerRewards() {
+  const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
   const [rewards, setRewards] = useState<Reward[]>([])
   const [loading, setLoading] = useState(true)
@@ -286,9 +290,9 @@ export default function OwnerRewards() {
 
   async function handleSave() {
     setFormError(null)
-    if (!draft.name.trim()) { setFormError('Name is required.'); return }
+    if (!draft.name.trim()) { setFormError(t('admin.rewards.nameRequired')); return }
     if (draft.points_cost === '' || Number(draft.points_cost) < 1) {
-      setFormError('Points cost must be at least 1.')
+      setFormError(t('admin.rewards.pointsCostInvalid'))
       return
     }
     setSaving(true)
@@ -297,7 +301,7 @@ export default function OwnerRewards() {
     if (draft.imageFile) {
       const result = await uploadImage(draft.imageFile)
       if ('error' in result) {
-        setFormError(`Image upload failed: ${result.error}`)
+        setFormError(t('admin.rewards.imageUploadFailed', { error: result.error }))
         setSaving(false)
         return
       }
@@ -320,7 +324,7 @@ export default function OwnerRewards() {
           ? { ...r, ...payload, image_url: imageUrl ?? r.image_url }
           : r,
       ))
-      setToastMsg('Reward updated')
+      setToastMsg(t('admin.rewards.rewardUpdated'))
     } else {
       const { data, error } = await supabase
         .from('rewards')
@@ -329,7 +333,7 @@ export default function OwnerRewards() {
         .single()
       if (error) { setFormError(error.message); setSaving(false); return }
       setRewards(prev => [...prev, data as Reward])
-      setToastMsg('Reward added')
+      setToastMsg(t('admin.rewards.rewardAdded'))
     }
 
     setSaving(false)
@@ -345,10 +349,10 @@ export default function OwnerRewards() {
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Rewards</h1>
+        <h1 className="text-xl font-semibold">{t('admin.nav.rewards')}</h1>
         <Button size="sm" onClick={openAdd}>
-          <Plus size={14} className="mr-1" />
-          Add reward
+          <Plus size={14} />
+          {t('admin.rewards.addTitle')}
         </Button>
       </div>
 
@@ -369,10 +373,10 @@ export default function OwnerRewards() {
       ) : rewards.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground rounded-lg border border-dashed">
           <Gift size={36} className="opacity-30" />
-          <p className="text-sm">No rewards yet</p>
+          <p className="text-sm">{t('admin.rewards.emptyTitle')}</p>
           <Button size="sm" variant="outline" onClick={openAdd}>
-            <Plus size={14} className="mr-1" />
-            Add your first reward
+            <Plus size={14} />
+            {t('admin.rewards.addFirst')}
           </Button>
         </div>
       ) : (

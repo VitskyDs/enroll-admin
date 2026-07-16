@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { X, Check, Gift, CreditCard, Star, Users, TrendingUp, TrendingDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Input } from '@vitskyds/enroll-ui'
@@ -41,37 +43,37 @@ type PanelData = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function relativeDate(iso: string) {
+function relativeDate(t: TFunction, iso: string) {
   const ms = Date.now() - new Date(iso).getTime()
   const days = Math.floor(ms / 86_400_000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  if (days < 30) return `${Math.floor(days / 7)}w ago`
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`
-  return `${Math.floor(days / 365)}y ago`
+  if (days === 0) return t('admin.customerDetail.today')
+  if (days === 1) return t('admin.customerDetail.yesterday')
+  if (days < 7) return t('admin.customerDetail.daysAgo', { count: days })
+  if (days < 30) return t('admin.customerDetail.weeksAgo', { count: Math.floor(days / 7) })
+  if (days < 365) return t('admin.customerDetail.monthsAgo', { count: Math.floor(days / 30) })
+  return t('admin.customerDetail.yearsAgo', { count: Math.floor(days / 365) })
 }
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('he-IL', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function initials(name: string) {
   return name.split(' ').slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('')
 }
 
-function reasonLabel(reason: string) {
+function reasonLabel(t: TFunction, reason: string) {
   const map: Record<string, string> = {
-    purchase: 'Purchase',
-    service_visit: 'Visit',
-    check_in: 'Check-in',
-    referral: 'Referral bonus',
-    redemption: 'Redemption',
-    manual_gift: 'Gift from owner',
-    birthday_bonus: 'Birthday bonus',
-    catch_up_gift: 'Catch up gift',
-    punch_card: 'Punch card reward',
+    purchase: t('history.purchase'),
+    service_visit: t('history.reason.service_visit'),
+    check_in: t('history.reason.check_in'),
+    referral: t('history.reason.referral'),
+    redemption: t('history.reason.redemption'),
+    manual_gift: t('admin.customerDetail.reasonManualGift'),
+    birthday_bonus: t('history.reason.birthday_bonus'),
+    catch_up_gift: t('admin.customerDetail.reasonCatchUpGift'),
+    punch_card: t('admin.customerDetail.reasonPunchCard'),
   }
   return map[reason] ?? reason.replace(/_/g, ' ')
 }
@@ -82,6 +84,15 @@ function tierColor(tier: string | null) {
     case 'silver': return 'text-zinc-500 bg-zinc-50 border-zinc-200'
     case 'bronze': return 'text-orange-600 bg-orange-50 border-orange-200'
     default:       return null
+  }
+}
+
+function tierLabel(t: TFunction, tier: string) {
+  switch (tier.toLowerCase()) {
+    case 'gold': return t('admin.customers.tierGold')
+    case 'silver': return t('admin.customers.tierSilver')
+    case 'bronze': return t('admin.customers.tierBronze')
+    default: return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase()
   }
 }
 
@@ -113,6 +124,7 @@ function PanelContent({
   businessId: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [data, setData] = useState<PanelData | null>(null)
   const [loading, setLoading] = useState(true)
   const [giftAmount, setGiftAmount] = useState('')
@@ -194,7 +206,7 @@ function PanelContent({
   async function handleGift() {
     setGiftError(null)
     const amount = parseInt(giftAmount, 10)
-    if (!amount || amount < 1) { setGiftError('Enter a positive number of points.'); return }
+    if (!amount || amount < 1) { setGiftError(t('admin.customerDetail.giftInvalid')); return }
     setGifting(true)
 
     const { error: giftErr } = await supabase.rpc('gift_points', {
@@ -207,7 +219,7 @@ function PanelContent({
     setGiftAmount('')
     setGiftNote('')
     setGifting(false)
-    setToast(`${amount} points gifted`)
+    setToast(t('admin.customerDetail.pointsGifted', { count: amount }))
     load()
   }
 
@@ -236,9 +248,9 @@ function PanelContent({
         {/* Stats strip */}
         <div className="grid grid-cols-3 divide-x border-b">
           {[
-            { label: 'Points', value: localPoints.toLocaleString() },
-            { label: 'Lifetime', value: customer.lifetime_points.toLocaleString() },
-            { label: 'Joined', value: formatDate(customer.joined_at) },
+            { label: t('admin.customers.colPoints'), value: localPoints.toLocaleString() },
+            { label: t('rewards.lifetime'), value: customer.lifetime_points.toLocaleString() },
+            { label: t('admin.customers.colJoined'), value: formatDate(customer.joined_at) },
           ].map(({ label, value }) => (
             <div key={label} className="px-3 py-3 text-center">
               <div className="text-xs text-muted-foreground">{label}</div>
@@ -252,7 +264,7 @@ function PanelContent({
           <div className="px-5 py-3 border-b flex items-center gap-2">
             <Star size={13} className="text-muted-foreground" />
             <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', tierCls)}>
-              {customer.tier.charAt(0).toUpperCase() + customer.tier.slice(1).toLowerCase()}
+              {tierLabel(t, customer.tier)}
             </span>
           </div>
         )}
@@ -278,10 +290,10 @@ function PanelContent({
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium flex items-center gap-1.5">
                     <CreditCard size={13} className="text-muted-foreground" />
-                    Punch card
+                    {t('home.punchCard')}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {customer.punch_card_count} / {data.punchTarget} punches
+                    {t('admin.customerDetail.punchesCount', { count: customer.punch_card_count, target: data.punchTarget })}
                   </span>
                 </div>
                 <div className="flex gap-1 flex-wrap mb-2">
@@ -299,7 +311,7 @@ function PanelContent({
                 </div>
                 {data.punchRewardName && (
                   <p className="text-xs text-muted-foreground">
-                    Reward: {data.punchRewardName}
+                    {t('admin.customerDetail.punchReward', { name: data.punchRewardName })}
                   </p>
                 )}
               </div>
@@ -309,25 +321,25 @@ function PanelContent({
             <div className="px-5 py-4 border-b">
               <p className="text-xs font-medium flex items-center gap-1.5 mb-3">
                 <Gift size={13} className="text-muted-foreground" />
-                Gift points
+                {t('admin.customerDetail.giftPoints')}
               </p>
               <div className="flex gap-2">
                 <Input
                   type="number"
                   min="1"
-                  placeholder="Amount"
+                  placeholder={t('admin.customerDetail.amountPlaceholder')}
                   value={giftAmount}
                   onChange={e => setGiftAmount(e.target.value)}
                   className="w-28"
                 />
                 <Input
-                  placeholder="Note (optional)"
+                  placeholder={t('admin.customerDetail.notePlaceholder')}
                   value={giftNote}
                   onChange={e => setGiftNote(e.target.value)}
                   className="flex-1"
                 />
                 <Button size="sm" onClick={handleGift} disabled={gifting}>
-                  {gifting ? '…' : 'Gift'}
+                  {gifting ? '…' : t('admin.customerDetail.giftButton')}
                 </Button>
               </div>
               {giftError && <p className="text-xs text-destructive mt-1.5">{giftError}</p>}
@@ -338,10 +350,10 @@ function PanelContent({
             <div className="px-5 py-4 border-b">
               <p className="text-xs font-medium flex items-center gap-1.5 mb-3">
                 <TrendingUp size={13} className="text-muted-foreground" />
-                Transaction history
+                {t('history.title')}
               </p>
               {data?.transactions.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No transactions yet</p>
+                <p className="text-xs text-muted-foreground">{t('history.empty')}</p>
               ) : (
                 <div className="space-y-2.5">
                   {data?.transactions.map(tx => (
@@ -356,8 +368,8 @@ function PanelContent({
                             : <TrendingDown size={11} />}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-medium truncate">{reasonLabel(tx.reason)}</p>
-                          <p className="text-[11px] text-muted-foreground">{relativeDate(tx.created_at)}</p>
+                          <p className="text-xs font-medium truncate">{reasonLabel(t, tx.reason)}</p>
+                          <p className="text-[11px] text-muted-foreground">{relativeDate(t, tx.created_at)}</p>
                         </div>
                       </div>
                       <span className={cn(
@@ -376,15 +388,15 @@ function PanelContent({
             <div className="px-5 py-4">
               <p className="text-xs font-medium flex items-center gap-1.5 mb-3">
                 <Users size={13} className="text-muted-foreground" />
-                Referrals ({data?.referrals.length ?? 0})
+                {t('admin.customerDetail.referralsCount', { count: data?.referrals.length ?? 0 })}
               </p>
               {data?.referrals.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No referrals yet</p>
+                <p className="text-xs text-muted-foreground">{t('referrals.empty')}</p>
               ) : (
                 <div className="space-y-2">
                   {data?.referrals.map(r => (
                     <div key={r.id} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-medium truncate">{r.referee?.name ?? 'Unknown'}</span>
+                      <span className="font-medium truncate">{r.referee?.name ?? t('admin.customerDetail.unknownReferee')}</span>
                       <span className="text-muted-foreground shrink-0">
                         {r.referee?.joined_at ? formatDate(r.referee.joined_at) : '—'}
                       </span>
