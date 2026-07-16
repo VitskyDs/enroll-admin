@@ -238,7 +238,7 @@ function QuickActionsCard({
                 <button
                   type="button"
                   onClick={onAwardPoints}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-button-ghost-bg-hover transition-colors group"
+                  className="w-full flex items-center gap-3 px-5 py-3.5 text-right hover:bg-button-ghost-bg-hover transition-colors group"
                 >
                   {inner}
                 </button>
