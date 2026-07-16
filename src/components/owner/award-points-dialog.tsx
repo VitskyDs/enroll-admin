@@ -33,7 +33,7 @@ function tierColor(tier: string | null) {
 // tier is always derived from lifetime_points, same as Home.tsx and settle_order.
 function currentTierFor(program: LoyaltyProgram, lifetimePoints: number) {
   const sorted = [...(program.reward_tiers?.tiers ?? [])].sort((a, b) => a.min_points - b.min_points)
-  return [...sorted].reverse().find(t => t.min_points <= lifetimePoints) ?? null
+  return [...sorted].reverse().find(t => t.min_points <= lifetimePoints) ?? sorted[0] ?? null
 }
 
 function computePoints(purchaseAmount: number, program: LoyaltyProgram, lifetimePoints: number): number {
