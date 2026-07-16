@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Plus, GripVertical, Pencil, Package, X, Check, Upload } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -67,10 +69,10 @@ const STATUS_CYCLE: Record<ProductStatus, ProductStatus> = {
   draft: 'active',
 }
 
-const STATUS_LABELS: Record<ProductStatus, string> = {
-  active: 'Active',
-  draft: 'Draft',
-  inactive: 'Inactive',
+function statusLabel(t: TFunction, status: ProductStatus): string {
+  if (status === 'active') return t('status.active')
+  if (status === 'draft') return t('admin.products.statusDraft')
+  return t('status.inactive')
 }
 
 const STATUS_COLORS: Record<ProductStatus, string> = {
@@ -127,6 +129,7 @@ function ProductForm({
   error: string | null
   mode: 'add' | 'edit'
 }) {
+  const { t } = useTranslation()
   const derivedPoints = derivePoints(Number(draft.price_dollars), pointsPerDollar)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -143,7 +146,7 @@ function ProductForm({
     <Drawer open={open} onClose={onClose} side="right" className="w-full max-w-md border-l flex flex-col">
       <>
         <div className="flex items-center justify-between h-14 border-b px-5 shrink-0">
-          <span className="font-semibold text-sm">{mode === 'add' ? 'Add product' : 'Edit product'}</span>
+          <span className="font-semibold text-sm">{mode === 'add' ? t('admin.products.addTitle') : t('admin.products.editTitle')}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
             <X size={16} />
           </Button>
@@ -152,7 +155,7 @@ function ProductForm({
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Image */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Image</label>
+            <label className="text-sm font-medium">{t('admin.products.imageLabel')}</label>
             <div
               onClick={() => fileRef.current?.click()}
               className={cn(
@@ -163,13 +166,13 @@ function ProductForm({
               {draft.imagePreview ? (
                 <img
                   src={draft.imagePreview}
-                  alt="Preview"
+                  alt={t('admin.products.previewAlt')}
                   className="w-full h-40 object-cover"
                 />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
                   <Upload size={20} />
-                  <span className="text-xs">Click to upload</span>
+                  <span className="text-xs">{t('admin.rewards.clickToUpload')}</span>
                 </div>
               )}
             </div>
@@ -178,21 +181,21 @@ function ProductForm({
 
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Name <span className="text-destructive">*</span></label>
+            <label className="text-sm font-medium">{t('admin.products.nameLabel')} <span className="text-destructive">*</span></label>
             <Input
               value={draft.name}
               onChange={e => onChange({ name: e.target.value })}
-              placeholder="e.g. Drip coffee"
+              placeholder={t('admin.products.namePlaceholder')}
             />
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Description</label>
+            <label className="text-sm font-medium">{t('admin.products.descriptionLabel')}</label>
             <textarea
               value={draft.description}
               onChange={e => onChange({ description: e.target.value })}
-              placeholder="Optional description"
+              placeholder={t('admin.products.descriptionPlaceholder')}
               rows={3}
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
@@ -200,25 +203,25 @@ function ProductForm({
 
           {/* Hebrew name */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Hebrew name</label>
+            <label className="text-sm font-medium">{t('admin.products.nameHeLabel')}</label>
             <Input
               dir="rtl"
               lang="he"
               value={draft.name_he}
               onChange={e => onChange({ name_he: e.target.value })}
-              placeholder="שם בעברית (אופציונלי)"
+              placeholder={t('admin.products.nameHePlaceholder')}
             />
           </div>
 
           {/* Hebrew description */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Hebrew description</label>
+            <label className="text-sm font-medium">{t('admin.products.descriptionHeLabel')}</label>
             <textarea
               dir="rtl"
               lang="he"
               value={draft.description_he}
               onChange={e => onChange({ description_he: e.target.value })}
-              placeholder="תיאור בעברית (אופציונלי)"
+              placeholder={t('admin.products.descriptionHePlaceholder')}
               rows={3}
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
             />
@@ -227,7 +230,7 @@ function ProductForm({
           {/* Price + Category */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Price ($) <span className="text-destructive">*</span></label>
+              <label className="text-sm font-medium">{t('admin.products.priceLabel')} <span className="text-destructive">*</span></label>
               <Input
                 type="number"
                 min="0"
@@ -238,11 +241,11 @@ function ProductForm({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Category</label>
+              <label className="text-sm font-medium">{t('admin.products.categoryLabel')}</label>
               <Input
                 value={draft.category}
                 onChange={e => onChange({ category: e.target.value })}
-                placeholder="e.g. Drinks"
+                placeholder={t('admin.products.categoryPlaceholder')}
               />
             </div>
           </div>
@@ -250,30 +253,30 @@ function ProductForm({
           {/* Points override + Status */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Points earned</label>
+              <label className="text-sm font-medium">{t('admin.products.pointsEarnedLabel')}</label>
               <Input
                 type="number"
                 min="0"
-                placeholder={derivedPoints != null ? String(derivedPoints) : 'Default'}
+                placeholder={derivedPoints != null ? String(derivedPoints) : t('admin.products.pointsDefaultPlaceholder')}
                 value={draft.points_override}
                 onChange={e => onChange({ points_override: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
                 {derivedPoints != null
-                  ? 'Defaults from price.'
-                  : 'Set a points-per-dollar rate in Program.'}
+                  ? t('admin.products.pointsDefaultsFromPrice')
+                  : t('admin.products.pointsSetRate')}
               </p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium">{t('admin.products.statusLabel')}</label>
               <select
                 value={draft.status}
                 onChange={e => onChange({ status: e.target.value as ProductStatus })}
                 className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
               >
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">{t('status.active')}</option>
+                <option value="draft">{t('admin.products.statusDraft')}</option>
+                <option value="inactive">{t('status.inactive')}</option>
               </select>
             </div>
           </div>
@@ -283,7 +286,7 @@ function ProductForm({
 
         <div className="border-t p-4 shrink-0">
           <Button className="w-full" onClick={onSave} disabled={saving}>
-            {saving ? 'Saving…' : mode === 'add' ? 'Add product' : 'Save changes'}
+            {saving ? t('common.saving') : mode === 'add' ? t('admin.products.addTitle') : t('admin.products.saveChanges')}
           </Button>
         </div>
       </>
@@ -312,6 +315,7 @@ function ProductRow({
   onDrop: () => void
   isDragging: boolean
 }) {
+  const { t } = useTranslation()
   const thumb = product.image_urls[0]
   const points = product.points_override ?? derivePoints(product.price_cents / 100, pointsPerDollar)
   return (
@@ -352,7 +356,9 @@ function ProductRow({
             <>
               <span>·</span>
               <span>
-                {points} pts{product.points_override != null && ' · custom'}
+                {product.points_override != null
+                  ? t('admin.products.pointsCustom', { count: points })
+                  : t('admin.customers.ptsSuffix', { count: points })}
               </span>
             </>
           )}
@@ -362,13 +368,13 @@ function ProductRow({
       {/* Status toggle */}
       <button
         onClick={onStatusToggle}
-        title="Click to cycle status"
+        title={t('admin.products.cycleStatusTitle')}
         className={cn(
           'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium shrink-0 transition-colors',
           STATUS_COLORS[product.status],
         )}
       >
-        {STATUS_LABELS[product.status]}
+        {statusLabel(t, product.status)}
       </button>
 
       {/* Edit */}
@@ -382,6 +388,7 @@ function ProductRow({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerProducts() {
+  const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
   const { program } = useLoyaltyProgram(ownedBusinessId)
   const pointsPerDollar = (program?.earn_rules as EarnRules | undefined)?.points_per_dollar ?? null
@@ -445,9 +452,9 @@ export default function OwnerProducts() {
 
   async function handleSave() {
     setFormError(null)
-    if (!draft.name.trim()) { setFormError('Name is required.'); return }
+    if (!draft.name.trim()) { setFormError(t('admin.products.nameRequired')); return }
     if (draft.price_dollars === '' || isNaN(Number(draft.price_dollars))) {
-      setFormError('Price is required.')
+      setFormError(t('admin.products.priceRequired'))
       return
     }
     setSaving(true)
@@ -456,7 +463,7 @@ export default function OwnerProducts() {
     if (draft.imageFile) {
       const result = await uploadImage(draft.imageFile)
       if ('error' in result) {
-        setFormError(`Image upload failed: ${result.error}`)
+        setFormError(t('admin.products.imageUploadFailed', { error: result.error }))
         setSaving(false)
         return
       }
@@ -483,7 +490,7 @@ export default function OwnerProducts() {
           ? { ...p, ...payload, image_urls: imageUrls ?? p.image_urls }
           : p,
       ))
-      setToastMsg('Product updated')
+      setToastMsg(t('admin.products.productUpdated'))
     } else {
       const { data, error } = await supabase
         .from('products')
@@ -499,7 +506,7 @@ export default function OwnerProducts() {
         .single()
       if (error) { setFormError(error.message); setSaving(false); return }
       setProducts(prev => [...prev, data as Product])
-      setToastMsg('Product added')
+      setToastMsg(t('admin.products.productAdded'))
     }
 
     setSaving(false)
@@ -544,10 +551,10 @@ export default function OwnerProducts() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Products</h1>
+        <h1 className="text-xl font-semibold">{t('admin.products.title')}</h1>
         <Button size="sm" onClick={openAdd}>
-          <Plus size={14} className="mr-1" />
-          Add product
+          <Plus size={14} />
+          {t('admin.products.addTitle')}
         </Button>
       </div>
 
@@ -569,10 +576,10 @@ export default function OwnerProducts() {
       ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground rounded-lg border border-dashed">
           <Package size={36} className="opacity-30" />
-          <p className="text-sm">No products yet</p>
+          <p className="text-sm">{t('admin.products.emptyTitle')}</p>
           <Button size="sm" variant="outline" onClick={openAdd}>
-            <Plus size={14} className="mr-1" />
-            Add your first product
+            <Plus size={14} />
+            {t('admin.products.addFirst')}
           </Button>
         </div>
       ) : (

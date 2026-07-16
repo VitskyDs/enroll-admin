@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { OwnerLayout } from '@/components/owner-layout'
@@ -20,17 +21,18 @@ const OwnerCatchUp = lazy(() => import('@/pages/owner/CatchUp'))
 // this, RequireOwner sends them to /sign-in, which (seeing a logged-in user)
 // sends them straight back to /owner, looping forever.
 function NotOwnerAccess() {
+  const { t } = useTranslation()
   const { signOut } = useAuth()
   const navigate = useNavigate()
   return (
     <div className="flex flex-col items-center justify-center gap-4 h-screen px-8 text-center">
-      <p className="text-lg font-semibold">This account isn't an owner on any business</p>
+      <p className="text-lg font-semibold">{t('admin.notOwner.title')}</p>
       <p className="text-sm text-muted-foreground max-w-xs">
-        Sign in with the Google account or email that owns a business on Enroll, or create a new one below.
+        {t('admin.notOwner.desc')}
       </p>
       <div className="flex flex-col gap-2 w-full max-w-64">
-        <Button onClick={() => navigate('/owner/onboarding')}>Create a business</Button>
-        <Button variant="outline" onClick={signOut}>Sign out</Button>
+        <Button onClick={() => navigate('/owner/onboarding')}>{t('admin.notOwner.createBusiness')}</Button>
+        <Button variant="outline" onClick={signOut}>{t('common.signOut')}</Button>
       </div>
     </div>
   )

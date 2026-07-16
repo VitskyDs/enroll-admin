@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2, Search, Star } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@vitskyds/enroll-ui'
@@ -62,6 +63,7 @@ export function AwardPointsDialog({
   businessId: string
   onSuccess: () => void
 }) {
+  const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>('lookup')
   const [phone, setPhone] = useState('')
   const [searching, setSearching] = useState(false)
@@ -136,7 +138,7 @@ export function AwardPointsDialog({
 
     const amount = parseFloat(purchaseAmount)
     if (!purchaseAmount || isNaN(amount) || amount <= 0) {
-      setSubmitError('Enter a valid purchase amount greater than 0.')
+      setSubmitError(t('admin.awardPoints.invalidAmount'))
       return
     }
 
@@ -166,9 +168,9 @@ export function AwardPointsDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Award points manually</DialogTitle>
+          <DialogTitle>{t('admin.awardPoints.title')}</DialogTitle>
           <DialogDescription>
-            Look up a customer by phone number and credit points for a purchase.
+            {t('admin.awardPoints.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -178,11 +180,11 @@ export function AwardPointsDialog({
               <Input
                 ref={phoneInputRef}
                 type="tel"
-                placeholder="Phone number"
+                placeholder={t('admin.awardPoints.phonePlaceholder')}
                 value={phone}
                 onChange={e => { setPhone(e.target.value); setNotFound(false) }}
                 className="flex-1"
-                aria-label="Customer phone number"
+                aria-label={t('admin.awardPoints.phoneAriaLabel')}
               />
               <Button type="submit" disabled={searching || !phone.trim()}>
                 {searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
@@ -191,7 +193,7 @@ export function AwardPointsDialog({
 
             {notFound && (
               <p className="text-sm text-muted-foreground">
-                No customer found with that phone number.
+                {t('admin.awardPoints.notFound')}
               </p>
             )}
             {lookupError && (
@@ -217,7 +219,7 @@ export function AwardPointsDialog({
                 )}
               </div>
               <div className="flex gap-4 text-xs text-muted-foreground">
-                <span>{customer.points.toLocaleString()} pts balance</span>
+                <span>{t('admin.awardPoints.ptsBalance', { count: customer.points })}</span>
                 {customer.phone && <span>{customer.phone}</span>}
               </div>
             </div>
@@ -225,7 +227,7 @@ export function AwardPointsDialog({
             {/* Purchase amount entry */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium" htmlFor="purchase-amount">
-                Purchase amount ($)
+                {t('admin.awardPoints.purchaseAmountLabel')}
               </label>
               <Input
                 id="purchase-amount"
@@ -239,13 +241,13 @@ export function AwardPointsDialog({
               />
               {points !== null && points > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  This will credit <span className="font-semibold text-foreground">{points.toLocaleString()} points</span>
-                  {currentTier && currentTier.multiplier && currentTier.multiplier !== 1 && ` (${currentTier.name.toLowerCase()} tier multiplier applied)`}
+                  <span className="font-semibold text-foreground">{t('admin.awardPoints.willCredit', { count: points })}</span>
+                  {currentTier && currentTier.multiplier && currentTier.multiplier !== 1 && ` ${t('admin.awardPoints.multiplierApplied', { tier: currentTier.name })}`}
                 </p>
               )}
               {points !== null && points === 0 && purchaseAmount && parseFloat(purchaseAmount) > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Amount too small to earn points with the current earn rate.
+                  {t('admin.awardPoints.tooSmall')}
                 </p>
               )}
             </div>
@@ -259,14 +261,14 @@ export function AwardPointsDialog({
               className="text-xs text-muted-foreground underline underline-offset-2 self-start"
               onClick={() => { setPhase('lookup'); setCustomer(null); setPurchaseAmount(''); setSubmitError(null) }}
             >
-              Look up a different customer
+              {t('admin.awardPoints.lookupDifferent')}
             </button>
           </div>
         )}
 
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline" size="sm">Cancel</Button>
+            <Button variant="outline" size="sm">{t('common.cancel')}</Button>
           </DialogClose>
           {phase === 'confirm' && (
             <Button
@@ -274,8 +276,8 @@ export function AwardPointsDialog({
               onClick={handleConfirm}
               disabled={submitting || !purchaseAmount || parseFloat(purchaseAmount) <= 0}
             >
-              {submitting ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-              {submitting ? 'Saving…' : 'Award points'}
+              {submitting ? <Loader2 size={14} className="animate-spin" /> : null}
+              {submitting ? t('common.saving') : t('admin.awardPoints.submit')}
             </Button>
           )}
         </DialogFooter>

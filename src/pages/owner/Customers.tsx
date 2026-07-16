@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useSearchParams } from 'react-router-dom'
 import { Search, X, ChevronUp, ChevronDown, ChevronsUpDown, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,7 +34,7 @@ function isActive(c: OwnerCustomer) {
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('he-IL', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function initials(name: string) {
@@ -43,9 +45,14 @@ function initials(name: string) {
     .join('')
 }
 
-function tierLabel(tier: string | null) {
+function tierLabel(t: TFunction, tier: string | null) {
   if (!tier) return null
-  return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase()
+  switch (tier.toLowerCase()) {
+    case 'gold': return t('admin.customers.tierGold')
+    case 'silver': return t('admin.customers.tierSilver')
+    case 'bronze': return t('admin.customers.tierBronze')
+    default: return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase()
+  }
 }
 
 function tierColor(tier: string | null) {
@@ -104,10 +111,11 @@ function SortButton({
 }
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  const { t } = useTranslation()
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-secondary text-secondary-foreground text-xs px-2.5 py-1 font-medium">
       {label}
-      <button onClick={onRemove} className="hover:text-foreground transition-colors" aria-label={`Remove ${label} filter`}>
+      <button onClick={onRemove} className="hover:text-foreground transition-colors" aria-label={t('admin.customers.removeFilter', { label })}>
         <X size={11} />
       </button>
     </span>
@@ -152,6 +160,7 @@ function CustomerRow({
   selected: boolean
   onClick: () => void
 }) {
+  const { t } = useTranslation()
   const tierCls = tierColor(customer.tier)
   return (
     <tr
@@ -173,7 +182,7 @@ function CustomerRow({
       <td className="px-4 py-3">
         {customer.tier && tierCls ? (
           <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', tierCls)}>
-            {tierLabel(customer.tier)}
+            {tierLabel(t, customer.tier)}
           </span>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
@@ -197,6 +206,7 @@ function CustomerCard({
   selected: boolean
   onClick: () => void
 }) {
+  const { t } = useTranslation()
   const tierCls = tierColor(customer.tier)
   return (
     <button
@@ -212,14 +222,14 @@ function CustomerCard({
           <span className="text-sm font-medium truncate">{customer.name}</span>
           {customer.tier && tierCls && (
             <span className={cn('inline-flex items-center rounded-full border px-1.5 py-0.5 text-[11px] font-medium', tierCls)}>
-              {tierLabel(customer.tier)}
+              {tierLabel(t, customer.tier)}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-          <span>{customer.points.toLocaleString()} pts</span>
+          <span>{t('admin.customers.ptsSuffix', { count: customer.points })}</span>
           <span>·</span>
-          <span>Last visit {formatDate(customer.last_visit_at)}</span>
+          <span>{t('admin.customers.lastVisitLabel', { date: formatDate(customer.last_visit_at) })}</span>
         </div>
       </div>
     </button>
@@ -231,6 +241,7 @@ function CustomerCard({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerCustomers() {
+  const { t } = useTranslation()
   const { customers, loading } = useOwnerCustomers()
   const { ownedBusinessId } = useAuth()
 
@@ -319,9 +330,18 @@ export default function OwnerCustomers() {
   const hasMore = paginated.length < filtered.length
 
   const activeChips: { label: string; clear: () => void }[] = []
-  if (tierFilter !== 'all') activeChips.push({ label: `Tier: ${tierFilter === 'none' ? 'None' : tierFilter.charAt(0).toUpperCase() + tierFilter.slice(1)}`, clear: () => setTierFilter('all') })
-  if (statusFilter !== 'all') activeChips.push({ label: `Status: ${statusFilter}`, clear: () => setStatusFilter('all') })
-  if (lastVisitFilter !== 'all') activeChips.push({ label: `Last visit: ${lastVisitFilter === '7d' ? '7 days' : lastVisitFilter === '30d' ? '30 days' : '90 days'}`, clear: () => setLastVisitFilter('all') })
+  if (tierFilter !== 'all') {
+    const value = tierFilter === 'none' ? t('admin.customers.noTier') : (tierLabel(t, tierFilter) ?? tierFilter)
+    activeChips.push({ label: t('admin.customers.filterTier', { value }), clear: () => setTierFilter('all') })
+  }
+  if (statusFilter !== 'all') {
+    const value = statusFilter === 'active' ? t('status.active') : t('status.inactive')
+    activeChips.push({ label: t('admin.customers.filterStatus', { value }), clear: () => setStatusFilter('all') })
+  }
+  if (lastVisitFilter !== 'all') {
+    const value = lastVisitFilter === '7d' ? t('admin.customers.days7') : lastVisitFilter === '30d' ? t('admin.customers.days30') : t('admin.customers.days90')
+    activeChips.push({ label: t('admin.customers.filterLastVisit', { value }), clear: () => setLastVisitFilter('all') })
+  }
 
   return (
     <div className="flex flex-1 h-full min-h-0">
@@ -329,36 +349,36 @@ export default function OwnerCustomers() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Header */}
         <div className="p-4 md:p-6 border-b space-y-3">
-          <h1 className="text-xl font-semibold">Customers</h1>
+          <h1 className="text-xl font-semibold">{t('admin.nav.customers')}</h1>
 
           {/* Search + filters row */}
           <div className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-[200px]">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Search size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Search by name or email"
+                placeholder={t('admin.customers.searchPlaceholder')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-8"
+                className="pr-8"
               />
             </div>
             <NativeSelect value={tierFilter} onChange={v => setTierFilter(v as TierFilter)}>
-              <option value="all">All tiers</option>
-              <option value="gold">Gold</option>
-              <option value="silver">Silver</option>
-              <option value="bronze">Bronze</option>
-              <option value="none">No tier</option>
+              <option value="all">{t('admin.customers.allTiers')}</option>
+              <option value="gold">{t('admin.customers.tierGold')}</option>
+              <option value="silver">{t('admin.customers.tierSilver')}</option>
+              <option value="bronze">{t('admin.customers.tierBronze')}</option>
+              <option value="none">{t('admin.customers.noTier')}</option>
             </NativeSelect>
             <NativeSelect value={statusFilter} onChange={v => setStatusFilter(v as StatusFilter)}>
-              <option value="all">All statuses</option>
-              <option value="active">Active (90d)</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{t('admin.customers.allStatuses')}</option>
+              <option value="active">{t('admin.customers.statusActive90d')}</option>
+              <option value="inactive">{t('status.inactive')}</option>
             </NativeSelect>
             <NativeSelect value={lastVisitFilter} onChange={v => setLastVisitFilter(v as LastVisitFilter)}>
-              <option value="all">Any last visit</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
+              <option value="all">{t('admin.customers.anyLastVisit')}</option>
+              <option value="7d">{t('admin.customers.last7Days')}</option>
+              <option value="30d">{t('admin.customers.last30Days')}</option>
+              <option value="90d">{t('admin.customers.last90Days')}</option>
             </NativeSelect>
           </div>
 
@@ -372,7 +392,7 @@ export default function OwnerCustomers() {
                 onClick={() => { setTierFilter('all'); setStatusFilter('all'); setLastVisitFilter('all') }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                Clear all
+                {t('admin.customers.clearAll')}
               </button>
             </div>
           )}
@@ -398,14 +418,14 @@ export default function OwnerCustomers() {
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
               <Users size={36} className="opacity-30" />
               <p className="text-sm">
-                {customers.length === 0 ? 'No customers enrolled yet' : 'No customers match your filters'}
+                {customers.length === 0 ? t('admin.customers.emptyNone') : t('admin.customers.emptyFiltered')}
               </p>
               {customers.length > 0 && activeChips.length > 0 && (
                 <button
                   className="text-xs underline underline-offset-2"
                   onClick={() => { setTierFilter('all'); setStatusFilter('all'); setLastVisitFilter('all'); setSearch('') }}
                 >
-                  Clear filters
+                  {t('admin.customers.clearFilters')}
                 </button>
               )}
             </div>
@@ -415,20 +435,20 @@ export default function OwnerCustomers() {
               <table className="hidden md:table w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/30">
-                    <th className="px-4 py-2.5 text-left">
-                      <span className="text-xs font-medium text-muted-foreground">Name</span>
+                    <th className="px-4 py-2.5 text-right">
+                      <span className="text-xs font-medium text-muted-foreground">{t('admin.customers.colName')}</span>
                     </th>
-                    <th className="px-4 py-2.5 text-left">
-                      <span className="text-xs font-medium text-muted-foreground">Tier</span>
+                    <th className="px-4 py-2.5 text-right">
+                      <span className="text-xs font-medium text-muted-foreground">{t('admin.customers.colTier')}</span>
                     </th>
-                    <th className="px-4 py-2.5 text-left">
-                      <SortButton field="points" label="Points" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                    <th className="px-4 py-2.5 text-right">
+                      <SortButton field="points" label={t('admin.customers.colPoints')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     </th>
-                    <th className="px-4 py-2.5 text-left">
-                      <SortButton field="last_visit_at" label="Last visit" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                    <th className="px-4 py-2.5 text-right">
+                      <SortButton field="last_visit_at" label={t('admin.customers.colLastVisit')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     </th>
-                    <th className="px-4 py-2.5 text-left">
-                      <SortButton field="joined_at" label="Joined" sortField={sortField} sortDir={sortDir} onSort={handleSort} />
+                    <th className="px-4 py-2.5 text-right">
+                      <SortButton field="joined_at" label={t('admin.customers.colJoined')} sortField={sortField} sortDir={sortDir} onSort={handleSort} />
                     </th>
                   </tr>
                 </thead>
@@ -460,15 +480,15 @@ export default function OwnerCustomers() {
               {hasMore && (
                 <div className="flex justify-center p-4">
                   <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)}>
-                    Show more ({filtered.length - paginated.length} remaining)
+                    {t('admin.customers.showMore', { count: filtered.length - paginated.length })}
                   </Button>
                 </div>
               )}
 
               {/* Result count */}
               <div className="px-4 py-2 text-xs text-muted-foreground border-t">
-                {filtered.length} {filtered.length === 1 ? 'customer' : 'customers'}
-                {filtered.length !== customers.length && ` of ${customers.length} total`}
+                {t('admin.customers.resultCount', { count: filtered.length })}
+                {filtered.length !== customers.length && t('admin.customers.resultCountOfTotal', { total: customers.length })}
               </div>
             </>
           )}

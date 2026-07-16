@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Pencil, Check, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -95,6 +96,7 @@ function PunchCardRewardEditor({
   saving: boolean
   error: string | null
 }) {
+  const { t } = useTranslation()
   const categoryOptions = selectedCategory && !categories.includes(selectedCategory)
     ? [selectedCategory, ...categories]
     : categories
@@ -111,9 +113,9 @@ function PunchCardRewardEditor({
 
   return (
     <fieldset className="space-y-2.5">
-      <legend className="text-sm font-medium">Completion reward</legend>
+      <legend className="text-sm font-medium">{t('admin.program.completionReward')}</legend>
 
-      <div role="radiogroup" aria-label="Reward type" className="inline-flex rounded-md border p-0.5 bg-muted/30">
+      <div role="radiogroup" aria-label={t('admin.program.rewardTypeLabel')} className="inline-flex rounded-md border p-0.5 bg-muted/30">
         {(['products', 'category'] as PunchRewardMode[]).map(m => (
           <button
             key={m}
@@ -126,14 +128,14 @@ function PunchCardRewardEditor({
               mode === m ? 'bg-background shadow-sm' : 'text-muted-foreground',
             )}
           >
-            {m === 'products' ? 'Specific products' : 'Category'}
+            {m === 'products' ? t('admin.program.specificProducts') : t('admin.program.categoryTab')}
           </button>
         ))}
       </div>
 
       {mode === 'products' && (
         activeProducts.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No active products yet — add one on the products page first.</p>
+          <p className="text-xs text-muted-foreground">{t('admin.program.noActiveProducts')}</p>
         ) : (
           <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
             {activeProducts.map(p => (
@@ -154,15 +156,15 @@ function PunchCardRewardEditor({
 
       {mode === 'category' && (
         categoryOptions.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No product categories yet — add a category to a product first.</p>
+          <p className="text-xs text-muted-foreground">{t('admin.program.noCategories')}</p>
         ) : (
           <select
-            aria-label="Reward category"
+            aria-label={t('admin.program.rewardCategoryLabel')}
             value={selectedCategory}
             onChange={e => onCategoryChange(e.target.value)}
             className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
           >
-            <option value="">Select a category</option>
+            <option value="">{t('admin.program.selectCategoryOption')}</option>
             {categoryOptions.map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -173,7 +175,7 @@ function PunchCardRewardEditor({
       {categoryHasNoProducts && (
         <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
           <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-          This category has no active products — customers won't have anything to redeem until you add one.
+          {t('admin.program.categoryEmptyWarning')}
         </p>
       )}
 
@@ -181,7 +183,7 @@ function PunchCardRewardEditor({
 
       <div className="flex justify-end">
         <Button size="sm" onClick={onSave} disabled={saving || categoryHasNoProducts}>
-          {saving ? 'Saving…' : 'Save reward'}
+          {saving ? t('common.saving') : t('admin.program.saveReward')}
         </Button>
       </div>
     </fieldset>
@@ -191,6 +193,7 @@ function PunchCardRewardEditor({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OwnerProgram() {
+  const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
   const { program, loading } = useLoyaltyProgram(ownedBusinessId)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
@@ -248,23 +251,23 @@ export default function OwnerProgram() {
   }, [program])
 
   function handleEditClick() {
-    setToastMsg('Editing the program is coming soon')
+    setToastMsg(t('admin.program.editComingSoon'))
   }
 
   async function saveReward() {
     setRewardError(null)
     if (rewardMode === 'products') {
       if (selectedProductIds.length === 0) {
-        setRewardError('Select at least one product.')
+        setRewardError(t('admin.program.selectAtLeastOneProduct'))
         return
       }
     } else {
       if (!selectedCategory) {
-        setRewardError('Select a category.')
+        setRewardError(t('admin.program.selectCategoryError'))
         return
       }
       if (!activeProducts.some(p => p.category === selectedCategory)) {
-        setRewardError('This category has no active products — choose a different category or add one first.')
+        setRewardError(t('admin.program.categoryNoProductsError'))
         return
       }
     }
@@ -293,7 +296,7 @@ export default function OwnerProgram() {
       return
     }
     if (program) writeCache('loyaltyProgram', ownedBusinessId!, { ...program, ...payload })
-    setToastMsg('Punch card reward saved')
+    setToastMsg(t('admin.program.rewardSaved'))
   }
 
   if (loading) {
@@ -317,49 +320,49 @@ export default function OwnerProgram() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Loyalty program</h1>
+        <h1 className="text-xl font-semibold">{t('admin.nav.program')}</h1>
         <Button size="sm" onClick={handleEditClick}>
           <Pencil size={14} />
-          Edit
+          {t('admin.program.edit')}
         </Button>
       </div>
 
       {/* Earn rules */}
-      <Section title="Earn rules" description="How customers earn points.">
+      <Section title={t('admin.program.earnRulesTitle')} description={t('admin.program.earnRulesDesc')}>
         <div className="grid grid-cols-2 gap-4">
           <Field
-            label="Points per dollar"
-            value={earn?.points_per_dollar != null ? earn.points_per_dollar : 'Not set'}
+            label={t('admin.program.pointsPerDollar')}
+            value={earn?.points_per_dollar != null ? earn.points_per_dollar : t('admin.program.notSet')}
           />
           <Field
-            label="Points per visit"
-            value={earn?.points_per_visit != null ? earn.points_per_visit : 'Not set'}
+            label={t('admin.program.pointsPerVisit')}
+            value={earn?.points_per_visit != null ? earn.points_per_visit : t('admin.program.notSet')}
           />
         </div>
       </Section>
 
       {/* Birthday bonus */}
-      <Section title="Birthday bonus">
+      <Section title={t('admin.program.birthdayBonusTitle')}>
         <Field
-          label="Status"
+          label={t('admin.program.status')}
           value={
             earn?.birthday_bonus_points
-              ? `Enabled — ${earn.birthday_bonus_points} bonus points`
-              : 'Disabled'
+              ? t('admin.program.birthdayEnabled', { count: earn.birthday_bonus_points })
+              : t('admin.program.disabled')
           }
         />
       </Section>
 
       {/* Tiers */}
-      <Section title="Tiers" description="Customers progress through tiers based on lifetime points.">
+      <Section title={t('admin.program.tiersTitle')} description={t('admin.program.tiersDesc')}>
         <div className="space-y-4">
           {tiers.map((tier, i) => (
             <div key={i} className="rounded-md border p-4 space-y-2 bg-muted/20">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{tier.name}</span>
-                <span className="text-xs text-muted-foreground">Tier {i + 1}</span>
+                <span className="text-xs text-muted-foreground">{t('admin.program.tierLabel', { n: i + 1 })}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{tier.min_points} lifetime points</p>
+              <p className="text-xs text-muted-foreground">{t('admin.program.tierLifetimePoints', { count: tier.min_points })}</p>
               {(tier.perks ?? (tier.perk ? [tier.perk] : [])).length > 0 && (
                 <ul className="text-sm list-disc list-inside space-y-0.5">
                   {(tier.perks ?? (tier.perk ? [tier.perk] : [])).map((perk, pi) => (
@@ -370,34 +373,34 @@ export default function OwnerProgram() {
             </div>
           ))}
           {tiers.length === 0 && (
-            <p className="text-sm text-muted-foreground">No tiers configured.</p>
+            <p className="text-sm text-muted-foreground">{t('admin.program.noTiers')}</p>
           )}
         </div>
       </Section>
 
       {/* Referral rules */}
-      <Section title="Referral rules" description="Points awarded when a customer refers someone new.">
+      <Section title={t('admin.program.referralRulesTitle')} description={t('admin.program.referralRulesDesc')}>
         <div className="grid grid-cols-2 gap-4">
           <Field
-            label="Referrer points"
-            value={referral?.referrer_points != null ? referral.referrer_points : 'Not set'}
+            label={t('admin.program.referrerPoints')}
+            value={referral?.referrer_points != null ? referral.referrer_points : t('admin.program.notSet')}
           />
           <Field
-            label="Referee points"
-            value={referral?.referee_points != null ? referral.referee_points : 'Not set'}
+            label={t('admin.program.refereePoints')}
+            value={referral?.referee_points != null ? referral.referee_points : t('admin.program.notSet')}
           />
         </div>
       </Section>
 
       {/* Punch card */}
       <Section
-        title="Punch card"
-        description="Customers earn a punch per qualifying visit. When they hit the target, a reward unlocks automatically."
+        title={t('admin.program.punchCardTitle')}
+        description={t('admin.program.punchCardDesc')}
       >
-        <Field label="Status" value={program?.punch_card_enabled ? 'Enabled' : 'Disabled'} />
+        <Field label={t('admin.program.status')} value={program?.punch_card_enabled ? t('admin.program.enabled') : t('admin.program.disabled')} />
         {program?.punch_card_enabled && (
           <>
-            <Field label="Target punches" value={program?.punch_card_target ?? 'Not set'} />
+            <Field label={t('admin.program.targetPunches')} value={program?.punch_card_target ?? t('admin.program.notSet')} />
             <PunchCardRewardEditor
               activeProducts={activeProducts}
               categories={rewardCategories}
@@ -418,8 +421,8 @@ export default function OwnerProgram() {
       {/* Per-product earn overrides */}
       {products.length > 0 && (
         <Section
-          title="Per-product earn overrides"
-          description="Products with an earn rule that overrides the default."
+          title={t('admin.program.productOverridesTitle')}
+          description={t('admin.program.productOverridesDesc')}
         >
           <div className="space-y-2">
             {products.map(p => (
@@ -429,7 +432,7 @@ export default function OwnerProgram() {
                   ${(p.price_cents / 100).toFixed(2)}
                 </span>
                 <span className="text-sm text-muted-foreground shrink-0 w-20 text-right">
-                  {p.points_override !== '' ? `${p.points_override} pts` : 'Default'}
+                  {p.points_override !== '' ? t('admin.customers.ptsSuffix', { count: p.points_override }) : t('admin.program.defaultOverride')}
                 </span>
               </div>
             ))}
@@ -438,11 +441,11 @@ export default function OwnerProgram() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Need to make changes? See{' '}
+        {t('admin.program.editNoteBefore')}{' '}
         <Link to="/owner/rewards" className="underline">
-          rewards
+          {t('admin.nav.rewards')}
         </Link>{' '}
-        to manage the catalog, or use the Edit button above once the edit flow is available.
+        {t('admin.program.editNoteAfter')}
       </p>
 
       {toastMsg && <Toast message={toastMsg} />}

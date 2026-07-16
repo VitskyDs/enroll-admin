@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -19,19 +20,20 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@vitskyds/enroll-ui'
 
 const NAV_ITEMS = [
-  { to: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/owner/customers', label: 'Customers', icon: Users },
-  { to: '/owner/catch-up', label: 'Catch up', icon: HeartHandshake },
-  { to: '/owner/products', label: 'Products', icon: Briefcase },
-  { to: '/owner/rewards', label: 'Rewards', icon: Gift },
-  { to: '/owner/program', label: 'Loyalty program', icon: Star },
-  { to: '/owner/settings', label: 'Settings', icon: Settings },
+  { to: '/owner/dashboard', labelKey: 'admin.nav.dashboard', icon: LayoutDashboard },
+  { to: '/owner/customers', labelKey: 'admin.nav.customers', icon: Users },
+  { to: '/owner/catch-up', labelKey: 'admin.nav.catchUp', icon: HeartHandshake },
+  { to: '/owner/products', labelKey: 'admin.nav.products', icon: Briefcase },
+  { to: '/owner/rewards', labelKey: 'admin.nav.rewards', icon: Gift },
+  { to: '/owner/program', labelKey: 'admin.nav.program', icon: Star },
+  { to: '/owner/settings', labelKey: 'admin.nav.settings', icon: Settings },
 ]
 
 function NavItems({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
+  const { t } = useTranslation()
   return (
     <nav className="flex flex-col gap-1 p-2">
-      {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+      {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
@@ -46,7 +48,7 @@ function NavItems({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
           }
         >
           <Icon className="shrink-0" size={18} />
-          {!collapsed && <span>{label}</span>}
+          {!collapsed && <span>{t(labelKey)}</span>}
         </NavLink>
       ))}
     </nav>
@@ -56,6 +58,7 @@ function NavItems({ collapsed, onNavigate }: { collapsed?: boolean; onNavigate?:
 export function OwnerLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { t } = useTranslation()
   const { signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -69,7 +72,7 @@ export function OwnerLayout() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'hidden md:flex flex-col border-r bg-background transition-all duration-200',
+          'hidden md:flex flex-col border-l bg-background transition-all duration-200',
           collapsed ? 'w-[60px]' : 'w-[220px]',
         )}
       >
@@ -80,9 +83,9 @@ export function OwnerLayout() {
             size="icon"
             className="h-8 w-8 shrink-0"
             onClick={() => setCollapsed(c => !c)}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? t('admin.nav.expandSidebar') : t('admin.nav.collapseSidebar')}
           >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {collapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto">
@@ -97,7 +100,7 @@ export function OwnerLayout() {
             )}
           >
             <LogOut size={18} className="shrink-0" />
-            {!collapsed && <span>Sign out</span>}
+            {!collapsed && <span>{t('common.signOut')}</span>}
           </button>
         </div>
       </aside>
@@ -113,8 +116,8 @@ export function OwnerLayout() {
       {/* Mobile drawer */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-[220px] flex flex-col border-r bg-background transition-transform duration-200 md:hidden',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          'fixed inset-y-0 right-0 z-50 w-[220px] flex flex-col border-l bg-background transition-transform duration-200 md:hidden',
+          mobileOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >
         <div className="flex items-center justify-between h-14 border-b px-4">
@@ -132,7 +135,7 @@ export function OwnerLayout() {
             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-button-ghost-bg-hover hover:text-foreground transition-colors"
           >
             <LogOut size={18} className="shrink-0" />
-            <span>Sign out</span>
+            <span>{t('common.signOut')}</span>
           </button>
         </div>
       </aside>

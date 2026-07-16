@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { Button, Input } from '@vitskyds/enroll-ui'
 
@@ -8,6 +9,7 @@ import { Button, Input } from '@vitskyds/enroll-ui'
 // a dynamic preview URL. Shared between the full-page sign-in screen and the
 // guest Home sign-in drawer.
 export function DevSignIn({ disabled, onSignedIn }: { disabled: boolean; onSignedIn?: () => void }) {
+  const { t } = useTranslation()
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,18 +38,18 @@ export function DevSignIn({ disabled, onSignedIn }: { disabled: boolean; onSigne
     // Sign-up with email confirmation on returns a user but no session — surface
     // a hint instead of silently doing nothing. Otherwise the auth state change
     // re-renders /sign-in and redirects home.
-    setMessage('Account created. Check your email to confirm, then sign in.')
+    setMessage(t('admin.devSignIn.accountCreated'))
     setMode('signin')
     setSubmitting(false)
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-2 border-t">
-      <p className="text-xs text-muted-foreground text-center pt-2">Testing sign-in (preview only)</p>
+      <p className="text-xs text-muted-foreground text-center pt-2">{t('admin.devSignIn.testingLabel')}</p>
       <Input
         type="email"
         autoComplete="email"
-        placeholder="Email"
+        placeholder={t('admin.devSignIn.emailPlaceholder')}
         value={email}
         onChange={e => setEmail(e.target.value)}
         required
@@ -55,7 +57,7 @@ export function DevSignIn({ disabled, onSignedIn }: { disabled: boolean; onSigne
       <Input
         type="password"
         autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-        placeholder="Password"
+        placeholder={t('admin.devSignIn.passwordPlaceholder')}
         value={password}
         onChange={e => setPassword(e.target.value)}
         required
@@ -63,14 +65,14 @@ export function DevSignIn({ disabled, onSignedIn }: { disabled: boolean; onSigne
       {error && <p className="text-xs text-destructive">{error}</p>}
       {message && <p className="text-xs text-emerald-600">{message}</p>}
       <Button type="submit" variant="secondary" className="w-full h-10 text-sm" disabled={disabled || submitting}>
-        {submitting ? 'Please wait…' : mode === 'signin' ? 'Sign in with email' : 'Create account'}
+        {submitting ? t('admin.devSignIn.submitting') : mode === 'signin' ? t('admin.devSignIn.signInButton') : t('admin.devSignIn.createAccountButton')}
       </Button>
       <button
         type="button"
         className="text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-1"
         onClick={() => { setMode(m => (m === 'signin' ? 'signup' : 'signin')); setError(null); setMessage(null) }}
       >
-        {mode === 'signin' ? 'Create account' : 'Have an account? Sign in'}
+        {mode === 'signin' ? t('admin.devSignIn.createAccountButton') : t('admin.devSignIn.haveAccountToggle')}
       </button>
     </form>
   )

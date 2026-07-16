@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Upload, Link2, Check, Loader2, ArrowLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import { Camera, Upload, Link2, Check, Loader2, ArrowRight } from 'lucide-react'
 import { Button, Input } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -34,6 +36,7 @@ type RewardType = 'discounts' | 'perks' | 'points' | 'not_sure'
 type ThreadMessage = { role: 'ai' | 'user'; text: string }
 type Snapshot = { step: Step; thread: ThreadMessage[] }
 type Option = { value: string; label: string; description: string }
+type OptionDef = { value: string; labelKey: string; descKey: string }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -53,50 +56,56 @@ const PROGRESS: Record<Step, number> = {
   'submitting': 100,
 }
 
-const GOAL_OPTIONS: Option[] = [
-  { value: 'gain_members', label: 'Gain new members', description: 'Attract customers and expand your client base' },
-  { value: 'retain_customers', label: 'Retain customers', description: 'Keep current customers happy and coming back' },
-  { value: 'increase_revenue', label: 'Increase recurring revenue', description: 'Boost predictable income through repeat visits' },
+const GOAL_OPTIONS: OptionDef[] = [
+  { value: 'gain_members', labelKey: 'admin.onboarding.goalGainMembers', descKey: 'admin.onboarding.goalGainMembersDesc' },
+  { value: 'retain_customers', labelKey: 'admin.onboarding.goalRetainCustomers', descKey: 'admin.onboarding.goalRetainCustomersDesc' },
+  { value: 'increase_revenue', labelKey: 'admin.onboarding.goalIncreaseRevenue', descKey: 'admin.onboarding.goalIncreaseRevenueDesc' },
 ]
-const FREQ_OPTIONS: Option[] = [
-  { value: 'weekly', label: 'Weekly or more', description: 'Regulars who need ongoing incentives' },
-  { value: 'monthly_2_3', label: '2–3 times a month', description: 'Typical customers who visit with the right nudge' },
-  { value: 'monthly_1', label: 'Once a month', description: 'Occasional visitors to bring back on a rhythm' },
+const FREQ_OPTIONS: OptionDef[] = [
+  { value: 'weekly', labelKey: 'admin.onboarding.freqWeekly', descKey: 'admin.onboarding.freqWeeklyDesc' },
+  { value: 'monthly_2_3', labelKey: 'admin.onboarding.freqBiWeekly', descKey: 'admin.onboarding.freqBiWeeklyDesc' },
+  { value: 'monthly_1', labelKey: 'admin.onboarding.freqMonthly', descKey: 'admin.onboarding.freqMonthlyDesc' },
 ]
-const REWARD_OPTIONS: Option[] = [
-  { value: 'discounts', label: 'Discounts & free items', description: 'A percentage off or a free item after visits' },
-  { value: 'perks', label: 'Exclusive perks & status', description: 'Early access, VIP treatment, members-only offers' },
-  { value: 'points', label: 'Points they can redeem', description: 'A flexible currency that builds up over time' },
-  { value: 'not_sure', label: "I'm not sure", description: "We'll figure it out together" },
+const REWARD_OPTIONS: OptionDef[] = [
+  { value: 'discounts', labelKey: 'admin.onboarding.rewardDiscounts', descKey: 'admin.onboarding.rewardDiscountsDesc' },
+  { value: 'perks', labelKey: 'admin.onboarding.rewardPerks', descKey: 'admin.onboarding.rewardPerksDesc' },
+  { value: 'points', labelKey: 'admin.onboarding.rewardPoints', descKey: 'admin.onboarding.rewardPointsDesc' },
+  { value: 'not_sure', labelKey: 'admin.onboarding.rewardNotSure', descKey: 'admin.onboarding.rewardNotSureDesc' },
 ]
 
-const labelOf = (options: Option[], value: string | null) =>
-  options.find(o => o.value === value)?.label ?? ''
+const translateOptions = (t: TFunction, defs: OptionDef[]): Option[] =>
+  defs.map(d => ({ value: d.value, label: t(d.labelKey), description: t(d.descKey) }))
+
+const labelOf = (t: TFunction, defs: OptionDef[], value: string | null) => {
+  const def = defs.find(o => o.value === value)
+  return def ? t(def.labelKey) : ''
+}
 
 function slugify(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-function phaseHeader(step: Step, firstName: string) {
+function phaseHeader(t: TFunction, step: Step, firstName: string) {
   if (step.startsWith('goal') || step === 'program-loading') {
     return {
-      title: 'Setting up the loyalty program',
-      subtitle: "I'll guide you through creating a program that works like the pros'.",
+      title: t('admin.onboarding.programPhaseTitle'),
+      subtitle: t('admin.onboarding.programPhaseSubtitle'),
     }
   }
   if (step === 'program-review' || step === 'submitting') {
     return {
-      title: 'Review your loyalty program',
-      subtitle: "Take a look at what I put together, then launch when you're ready.",
+      title: t('admin.onboarding.reviewPhaseTitle'),
+      subtitle: t('admin.onboarding.reviewPhaseSubtitle'),
     }
   }
   return {
-    title: `Hi ${firstName}!`,
-    subtitle: "I'll help you set up your business and create a loyalty program in just a few steps.",
+    title: t('admin.onboarding.greeting', { name: firstName }),
+    subtitle: t('admin.onboarding.greetingSubtitle'),
   }
 }
 
 export default function OwnerOnboarding() {
+  const { t } = useTranslation()
   const { user, isOwner, isOwnerLoading, setOwnedBusinessId } = useAuth()
   const navigate = useNavigate()
   const threadEndRef = useRef<HTMLDivElement>(null)
@@ -119,8 +128,8 @@ export default function OwnerOnboarding() {
   const [slugError, setSlugError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const firstName = ((user?.user_metadata?.full_name as string | undefined) ?? '').split(' ')[0] || 'there'
-  const header = phaseHeader(step, firstName)
+  const firstName = ((user?.user_metadata?.full_name as string | undefined) ?? '').split(' ')[0] || t('onboarding.there')
+  const header = phaseHeader(t, step, firstName)
 
   useEffect(() => {
     if (!isOwnerLoading && isOwner) navigate('/owner/dashboard', { replace: true })
@@ -134,7 +143,7 @@ export default function OwnerOnboarding() {
   useEffect(() => {
     if (didInit.current) return
     didInit.current = true
-    pushAi("What's the name of your business?")
+    pushAi(t('admin.onboarding.askBusinessName'))
   }, [])
 
   useEffect(() => {
@@ -148,15 +157,15 @@ export default function OwnerOnboarding() {
       setSelectedIdxs(new Set(products.map((_, i) => i)))
       if (products.length > 0) {
         setStep('product-selection')
-        await pushAi(`I found ${products.length} products. Select the ones you'd like to include.`)
+        await pushAi(t('admin.onboarding.foundProducts', { count: products.length }))
       } else {
         setStep('product-retry')
-        await pushAi("I couldn't find any products on that page. Upload a file or take a photo of your menu instead.")
+        await pushAi(t('admin.onboarding.noProductsFound'))
       }
     }).catch(async () => {
       if (!active) return
       setStep('product-retry')
-      await pushAi("I had trouble reading that page. Upload a file or take a photo of your menu instead.")
+      await pushAi(t('admin.onboarding.pageReadError'))
     })
     return () => { active = false }
   }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -174,7 +183,7 @@ export default function OwnerOnboarding() {
       if (!active) return
       setGeneratedProgram(program)
       setStep('program-review')
-      await pushAi(`Here's your loyalty program — ${program.program_name}. ${program.summary}`)
+      await pushAi(t('admin.onboarding.programReady', { name: program.program_name, summary: program.summary }))
     })
     return () => { active = false }
   }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -221,7 +230,7 @@ export default function OwnerOnboarding() {
     setGeneratedProgram(null)
     setSlugError(null)
     setSubmitError(null)
-    pushAi("What's the name of your business?")
+    pushAi(t('admin.onboarding.askBusinessName'))
   }
 
   function toggleProduct(idx: number) {
@@ -235,44 +244,44 @@ export default function OwnerOnboarding() {
 
   function handleFile(file: File) {
     snapshot()
-    pushUser(`Uploaded: ${file.name}`)
+    pushUser(t('admin.onboarding.uploadedFile', { name: file.name }))
     setStep('file-loading')
     extractProductsFromFile(file).then(async products => {
       setExtractedProducts(products)
       setSelectedIdxs(new Set(products.map((_, i) => i)))
       if (products.length > 0) {
         setStep('product-selection')
-        await pushAi(`Found ${products.length} products. Select the ones to include.`)
+        await pushAi(t('admin.onboarding.foundProductsFile', { count: products.length }))
       } else {
         setStep('product-retry')
-        await pushAi("I couldn't read any products from that. Try another file or a photo of your menu.")
+        await pushAi(t('admin.onboarding.fileReadNoProducts'))
       }
     }).catch(async () => {
       setStep('product-retry')
-      await pushAi("Something went wrong reading that file. Try another file or a photo of your menu.")
+      await pushAi(t('admin.onboarding.fileReadError'))
     })
   }
 
   async function selectGoal(v: string) {
     setGoal(v as Goal)
     snapshot()
-    pushUser(labelOf(GOAL_OPTIONS, v))
+    pushUser(labelOf(t, GOAL_OPTIONS, v))
     setStep('goal-frequency')
-    await pushAi('How often does a typical customer visit?')
+    await pushAi(t('admin.onboarding.askVisitFrequency'))
   }
 
   async function selectFreq(v: string) {
     setVisitFreq(v as VisitFreq)
     snapshot()
-    pushUser(labelOf(FREQ_OPTIONS, v))
+    pushUser(labelOf(t, FREQ_OPTIONS, v))
     setStep('goal-rewards')
-    await pushAi('What reward would your customers love most?')
+    await pushAi(t('admin.onboarding.askRewardType'))
   }
 
   async function selectReward(v: string) {
     setRewardType(v as RewardType)
     snapshot()
-    pushUser(labelOf(REWARD_OPTIONS, v))
+    pushUser(labelOf(t, REWARD_OPTIONS, v))
     setStep('program-loading')
   }
 
@@ -293,7 +302,7 @@ export default function OwnerOnboarding() {
 
     const slug = slugify(businessName)
     const { data: existing } = await supabase.from('businesses').select('id').eq('slug', slug).maybeSingle()
-    if (existing) setSlugError(`The URL handle "${slug}" is already taken. Your business was saved with a unique ID.`)
+    if (existing) setSlugError(t('admin.onboarding.slugTakenNotice', { slug }))
     const finalSlug = existing ? `${slug}-${Date.now().toString(36)}` : slug
 
     const { data: biz, error: bizErr } = await supabase
@@ -303,7 +312,7 @@ export default function OwnerOnboarding() {
       .single()
 
     if (bizErr || !biz) {
-      setSubmitError('Something went wrong creating your business. Please try again.')
+      setSubmitError(t('admin.onboarding.businessCreateError'))
       setStep('program-review')
       return
     }
@@ -319,7 +328,7 @@ export default function OwnerOnboarding() {
     })
 
     if (programErr) {
-      setSubmitError('Something went wrong creating your loyalty program. Please try again.')
+      setSubmitError(t('admin.onboarding.programCreateError'))
       setStep('program-review')
       return
     }
@@ -339,21 +348,21 @@ export default function OwnerOnboarding() {
   function renderThreadContent() {
     switch (step) {
       case 'product-loading':
-        return <LoadingRow text="Scanning for products…" />
+        return <LoadingRow text={t('admin.onboarding.scanningProducts')} />
       case 'file-loading':
-        return <LoadingRow text="Reading your file…" />
+        return <LoadingRow text={t('admin.onboarding.readingFile')} />
       case 'product-selection':
         return (
           <div className="flex flex-col gap-2">
             {extractedProducts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No products found — you can add them after setup.</p>
+              <p className="text-sm text-muted-foreground">{t('admin.onboarding.noProductsFoundInline')}</p>
             ) : extractedProducts.map((p, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => toggleProduct(i)}
                 className={cn(
-                  'w-full text-left rounded-xl border px-4 py-3 transition-colors',
+                  'w-full text-right rounded-xl border px-4 py-3 transition-colors',
                   selectedIdxs.has(i) ? 'border-foreground bg-foreground/5' : 'border-border hover:border-foreground/40',
                 )}
               >
@@ -372,13 +381,13 @@ export default function OwnerOnboarding() {
           </div>
         )
       case 'goal-primary':
-        return <OptionList options={GOAL_OPTIONS} selected={goal} onSelect={selectGoal} />
+        return <OptionList options={translateOptions(t, GOAL_OPTIONS)} selected={goal} onSelect={selectGoal} />
       case 'goal-frequency':
-        return <OptionList options={FREQ_OPTIONS} selected={visitFreq} onSelect={selectFreq} />
+        return <OptionList options={translateOptions(t, FREQ_OPTIONS)} selected={visitFreq} onSelect={selectFreq} />
       case 'goal-rewards':
-        return <OptionList options={REWARD_OPTIONS} selected={rewardType} onSelect={selectReward} />
+        return <OptionList options={translateOptions(t, REWARD_OPTIONS)} selected={rewardType} onSelect={selectReward} />
       case 'program-loading':
-        return <LoadingRow text="Creating your loyalty program…" />
+        return <LoadingRow text={t('admin.onboarding.creatingProgram')} />
       case 'program-review':
         if (!generatedProgram) return null
         return (
@@ -388,16 +397,16 @@ export default function OwnerOnboarding() {
               <p className="text-sm text-muted-foreground mt-0.5">{generatedProgram.summary}</p>
             </div>
             <div className="flex flex-col gap-1.5 text-sm">
-              <Row label="Currency" value={generatedProgram.currency_name} />
-              <Row label="Earn rule" value={`1 ${generatedProgram.currency_name.toLowerCase().replace(/s$/, '')} per $1 spent`} />
-              <Row label="Referral" value={`${generatedProgram.referral_rules.referrer_points} pts for referrer · ${generatedProgram.referral_rules.referee_points} pts for new customer`} />
+              <Row label={t('admin.onboarding.currencyLabel')} value={generatedProgram.currency_name} />
+              <Row label={t('admin.onboarding.earnRuleLabel')} value={t('admin.onboarding.earnRuleValue', { currency: generatedProgram.currency_name.toLowerCase().replace(/s$/, '') })} />
+              <Row label={t('admin.onboarding.referralLabel')} value={t('admin.onboarding.referralValue', { referrer: generatedProgram.referral_rules.referrer_points, referee: generatedProgram.referral_rules.referee_points })} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tiers</p>
-              {generatedProgram.reward_tiers.tiers.map(t => (
-                <div key={t.name} className="flex items-baseline gap-2 text-sm">
-                  <span className="font-medium w-20 shrink-0">{t.name}</span>
-                  <span className="text-muted-foreground text-xs">{t.min_points} pts · {t.perks[0]}</span>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('admin.onboarding.tiersLabel')}</p>
+              {generatedProgram.reward_tiers.tiers.map(tier => (
+                <div key={tier.name} className="flex items-baseline gap-2 text-sm">
+                  <span className="font-medium w-20 shrink-0">{tier.name}</span>
+                  <span className="text-muted-foreground text-xs">{t('admin.onboarding.tierPtsPerk', { points: tier.min_points, perk: tier.perks[0] })}</span>
                 </div>
               ))}
             </div>
@@ -406,7 +415,7 @@ export default function OwnerOnboarding() {
           </div>
         )
       case 'submitting':
-        return <LoadingRow text="Setting up your business…" />
+        return <LoadingRow text={t('admin.onboarding.settingUpBusiness')} />
       default:
         return null
     }
@@ -424,13 +433,13 @@ export default function OwnerOnboarding() {
               snapshot()
               pushUser(businessName.trim())
               setStep('website-url')
-              pushAi("What's your website? I'll use it to find your products. (Optional — you can skip.)")
+              pushAi(t('admin.onboarding.askWebsiteUrl'))
             }}
             className="flex gap-2"
           >
             <Input
               autoFocus
-              placeholder="e.g. Corner Cup"
+              placeholder={t('admin.onboarding.businessNamePlaceholder')}
               value={businessName}
               onChange={e => setBusinessName(e.target.value)}
             />
@@ -447,11 +456,11 @@ export default function OwnerOnboarding() {
               snapshot()
               if (url) {
                 pushUser(url)
-                pushAi('Got it — let me scan your site for products.')
+                pushAi(t('admin.onboarding.willScanSite'))
                 setStep('product-loading')
               } else {
-                pushUser('Skipped')
-                pushAi('No problem. How would you like to share your products?')
+                pushUser(t('admin.onboarding.skippedLabel'))
+                pushAi(t('admin.onboarding.askProductShareMethod'))
                 setStep('product-input')
               }
             }}
@@ -460,12 +469,12 @@ export default function OwnerOnboarding() {
             <Input
               autoFocus
               type="url"
-              placeholder="https://yourbusiness.com (optional)"
+              placeholder={t('admin.onboarding.websiteUrlPlaceholderOptional')}
               value={websiteUrl}
               onChange={e => setWebsiteUrl(e.target.value)}
             />
             <Button type="submit" variant={websiteUrl.trim() ? 'default' : 'outline'}>
-              {websiteUrl.trim() ? <ArrowIcon /> : 'Skip'}
+              {websiteUrl.trim() ? <ArrowIcon /> : t('onboarding.skip')}
             </Button>
           </form>
         )
@@ -477,7 +486,7 @@ export default function OwnerOnboarding() {
               snapshot()
               setUrlInput(url)
               pushUser(url)
-              pushAi('Let me scan that for products.')
+              pushAi(t('admin.onboarding.willScanUrl'))
               setStep('product-loading')
             }}
             onFile={handleFile}
@@ -493,12 +502,12 @@ export default function OwnerOnboarding() {
               className="text-xs text-muted-foreground text-center py-1 hover:text-foreground transition-colors"
               onClick={() => {
                 snapshot()
-                pushUser("I'll add products later")
+                pushUser(t('admin.onboarding.willAddProductsLater'))
                 setStep('goal-primary')
-                pushAi("No problem. Now let's design your program. What's your primary goal?")
+                pushAi(t('admin.onboarding.askPrimaryGoal'))
               }}
             >
-              Skip — I'll add products later
+              {t('admin.onboarding.skipAddLater')}
             </button>
           </div>
         )
@@ -510,12 +519,12 @@ export default function OwnerOnboarding() {
             onClick={() => {
               const count = selectedIdxs.size
               snapshot()
-              pushUser(count > 0 ? `Selected ${count} product${count !== 1 ? 's' : ''}` : 'No products selected')
+              pushUser(count > 0 ? t('admin.onboarding.selectedProductsCount', { count }) : t('admin.onboarding.noProductsSelected'))
               setStep('goal-primary')
-              pushAi("Now let's design your program. What's your primary goal?")
+              pushAi(t('admin.onboarding.askPrimaryGoalContinue'))
             }}
           >
-            Continue
+            {t('admin.onboarding.continueButton')}
           </Button>
         )
 
@@ -523,14 +532,14 @@ export default function OwnerOnboarding() {
         return (
           <div className="flex flex-col gap-2">
             <Button className="w-full" onClick={handleSubmit}>
-              Done — launch my program
+              {t('admin.onboarding.launchProgram')}
             </Button>
             <button
               type="button"
               className="text-xs text-muted-foreground text-center py-1 hover:text-foreground transition-colors"
               onClick={reset}
             >
-              Start over
+              {t('admin.onboarding.startOver')}
             </button>
           </div>
         )
@@ -562,9 +571,9 @@ export default function OwnerOnboarding() {
               'shrink-0 size-9 rounded-xl bg-muted flex items-center justify-center transition-opacity',
               showBack ? 'hover:bg-muted/70' : 'opacity-30 pointer-events-none',
             )}
-            aria-label="Go back"
+            aria-label={t('common.back')}
           >
-            <ArrowLeft size={16} />
+            <ArrowRight size={16} />
           </button>
           <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
             <div
@@ -577,7 +586,7 @@ export default function OwnerOnboarding() {
             onClick={reset}
             className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Start over
+            {t('admin.onboarding.startOver')}
           </button>
         </div>
         <h1 className="text-2xl font-bold tracking-tight mt-5">{header.title}</h1>
@@ -641,10 +650,11 @@ function TypingIndicator() {
   )
 }
 
+// Mirrored for RTL: line + arrowhead point left (this app is RTL-only)
 function ArrowIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13 8H3M7 4L3 8l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -681,7 +691,7 @@ function OptionCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left rounded-xl border px-4 py-3 transition-colors',
+        'w-full text-right rounded-xl border px-4 py-3 transition-colors',
         selected ? 'border-foreground bg-foreground/5' : 'border-border hover:border-foreground/40',
       )}
     >
@@ -715,6 +725,7 @@ function OptionList({
 }
 
 function ProductInputOptions({ onUrl, onFile, showUrl = true }: { onUrl: (url: string) => void; onFile: (file: File) => void; showUrl?: boolean }) {
+  const { t } = useTranslation()
   const [urlMode, setUrlMode] = useState(false)
   const [urlValue, setUrlValue] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -723,7 +734,7 @@ function ProductInputOptions({ onUrl, onFile, showUrl = true }: { onUrl: (url: s
   if (urlMode) {
     return (
       <form onSubmit={e => { e.preventDefault(); if (urlValue.trim()) onUrl(urlValue.trim()) }} className="flex gap-2">
-        <Input autoFocus type="url" placeholder="https://yourbusiness.com" value={urlValue} onChange={e => setUrlValue(e.target.value)} />
+        <Input autoFocus type="url" placeholder={t('admin.onboarding.websiteUrlPlaceholder')} value={urlValue} onChange={e => setUrlValue(e.target.value)} />
         <Button type="submit" disabled={!urlValue.trim()}><ArrowIcon /></Button>
       </form>
     )
@@ -734,16 +745,16 @@ function ProductInputOptions({ onUrl, onFile, showUrl = true }: { onUrl: (url: s
       {showUrl && (
         <button type="button" onClick={() => setUrlMode(true)} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
           <Link2 size={16} className="text-muted-foreground shrink-0" />
-          <span>Enter your website URL</span>
+          <span>{t('admin.onboarding.enterWebsiteUrl')}</span>
         </button>
       )}
       <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
         <Upload size={16} className="text-muted-foreground shrink-0" />
-        <span>Upload a PDF or image of your menu</span>
+        <span>{t('admin.onboarding.uploadMenuFile')}</span>
       </button>
       <button type="button" onClick={() => cameraRef.current?.click()} className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm hover:border-foreground/40 transition-colors">
         <Camera size={16} className="text-muted-foreground shrink-0" />
-        <span>Take a photo of your menu</span>
+        <span>{t('admin.onboarding.takeMenuPhoto')}</span>
       </button>
       <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f) }} />
