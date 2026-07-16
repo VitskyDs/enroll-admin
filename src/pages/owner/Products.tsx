@@ -274,9 +274,10 @@ function ProductForm({
                   min="0"
                   step="0.01"
                   placeholder="0.00"
+                  dir="ltr"
                   value={draft.price_dollars}
                   onChange={e => onChange({ price_dollars: e.target.value })}
-                  className="pl-7"
+                  className="pl-7 text-left"
                 />
               </div>
             </div>
@@ -339,6 +340,7 @@ function ProductForm({
 function ProductRow({
   product,
   pointsPerDollar,
+  hebrewOnly,
   onEdit,
   onStatusToggle,
   onDragStart,
@@ -348,6 +350,7 @@ function ProductRow({
 }: {
   product: Product
   pointsPerDollar: number | null
+  hebrewOnly: boolean
   onEdit: () => void
   onStatusToggle: () => void
   onDragStart: () => void
@@ -358,7 +361,7 @@ function ProductRow({
   const { t, i18n } = useTranslation()
   const { currency } = useCurrency()
   const thumb = product.image_urls[0]
-  const displayName = product.name_he ?? product.name
+  const displayName = hebrewOnly ? (product.name_he ?? product.name) : product.name
   const points = product.points_override ?? derivePoints(product.price_cents / 100, pointsPerDollar)
   return (
     <div
@@ -634,6 +637,7 @@ export default function OwnerProducts() {
               key={p.id}
               product={p}
               pointsPerDollar={pointsPerDollar}
+              hebrewOnly={hebrewOnly}
               onEdit={() => openEdit(p)}
               onStatusToggle={() => toggleStatus(p)}
               onDragStart={() => handleDragStart(i)}
