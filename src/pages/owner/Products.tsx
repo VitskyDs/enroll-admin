@@ -5,10 +5,12 @@ import { Plus, GripVertical, Pencil, Package, X, Check, Upload } from 'lucide-re
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram'
+import { useBusiness } from '@/hooks/useBusiness'
+import { useCurrency } from '@/contexts/CurrencyContext'
 import type { EarnRules } from '@/types'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
-import { cn } from '@/lib/utils'
+import { cn, formatPrice, formatCurrencyUnit } from '@/lib/utils'
 import { Drawer } from '@/components/owner/drawer'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -83,10 +85,6 @@ const STATUS_COLORS: Record<ProductStatus, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function priceFmt(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`
-}
-
 function Skeleton({ className }: { className?: string }) {
   return <div className={cn('animate-pulse rounded bg-muted', className)} />
 }
@@ -112,6 +110,7 @@ function ProductForm({
   open,
   draft,
   pointsPerDollar,
+  defaultLanguage,
   onChange,
   onSave,
   onClose,
@@ -122,6 +121,7 @@ function ProductForm({
   open: boolean
   draft: FormDraft
   pointsPerDollar: number | null
+  defaultLanguage: string | null | undefined
   onChange: (patch: Partial<FormDraft>) => void
   onSave: () => void
   onClose: () => void
@@ -129,9 +129,11 @@ function ProductForm({
   error: string | null
   mode: 'add' | 'edit'
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { currency } = useCurrency()
   const derivedPoints = derivePoints(Number(draft.price_dollars), pointsPerDollar)
   const fileRef = useRef<HTMLInputElement>(null)
+  const hebrewOnly = defaultLanguage === 'he'
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -179,66 +181,104 @@ function ProductForm({
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
           </div>
 
-          {/* Name */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('admin.products.nameLabel')} <span className="text-destructive">*</span></label>
-            <Input
-              value={draft.name}
-              onChange={e => onChange({ name: e.target.value })}
-              placeholder={t('admin.products.namePlaceholder')}
-            />
-          </div>
+          {hebrewOnly ? (
+            <>
+              {/* Name (Hebrew-only business) */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('admin.products.nameLabel')} <span className="text-destructive">*</span></label>
+                <Input
+                  dir="rtl"
+                  lang="he"
+                  value={draft.name}
+                  onChange={e => onChange({ name: e.target.value })}
+                  placeholder={t('admin.products.namePlaceholder')}
+                />
+              </div>
 
-          {/* Description */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('admin.products.descriptionLabel')}</label>
-            <textarea
-              value={draft.description}
-              onChange={e => onChange({ description: e.target.value })}
-              placeholder={t('admin.products.descriptionPlaceholder')}
-              rows={3}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-            />
-          </div>
+              {/* Description (Hebrew-only business) */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('admin.products.descriptionLabel')}</label>
+                <textarea
+                  dir="rtl"
+                  lang="he"
+                  value={draft.description}
+                  onChange={e => onChange({ description: e.target.value })}
+                  placeholder={t('admin.products.descriptionPlaceholder')}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Name */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('admin.products.nameLabel')} <span className="text-destructive">*</span></label>
+                <Input
+                  value={draft.name}
+                  onChange={e => onChange({ name: e.target.value })}
+                  placeholder={t('admin.products.namePlaceholder')}
+                />
+              </div>
 
-          {/* Hebrew name */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('admin.products.nameHeLabel')}</label>
-            <Input
-              dir="rtl"
-              lang="he"
-              value={draft.name_he}
-              onChange={e => onChange({ name_he: e.target.value })}
-              placeholder={t('admin.products.nameHePlaceholder')}
-            />
-          </div>
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('admin.products.descriptionLabel')}</label>
+                <textarea
+                  value={draft.description}
+                  onChange={e => onChange({ description: e.target.value })}
+                  placeholder={t('admin.products.descriptionPlaceholder')}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+              </div>
 
-          {/* Hebrew description */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">{t('admin.products.descriptionHeLabel')}</label>
-            <textarea
-              dir="rtl"
-              lang="he"
-              value={draft.description_he}
-              onChange={e => onChange({ description_he: e.target.value })}
-              placeholder={t('admin.products.descriptionHePlaceholder')}
-              rows={3}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-            />
-          </div>
+              {/* Hebrew name */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('admin.products.nameHeLabel')}</label>
+                <Input
+                  dir="rtl"
+                  lang="he"
+                  value={draft.name_he}
+                  onChange={e => onChange({ name_he: e.target.value })}
+                  placeholder={t('admin.products.nameHePlaceholder')}
+                />
+              </div>
+
+              {/* Hebrew description */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">{t('admin.products.descriptionHeLabel')}</label>
+                <textarea
+                  dir="rtl"
+                  lang="he"
+                  value={draft.description_he}
+                  onChange={e => onChange({ description_he: e.target.value })}
+                  placeholder={t('admin.products.descriptionHePlaceholder')}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+              </div>
+            </>
+          )}
 
           {/* Price + Category */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t('admin.products.priceLabel')} <span className="text-destructive">*</span></label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                value={draft.price_dollars}
-                onChange={e => onChange({ price_dollars: e.target.value })}
-              />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                  {formatCurrencyUnit(currency, i18n.language)}
+                </span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={draft.price_dollars}
+                  onChange={e => onChange({ price_dollars: e.target.value })}
+                  className="pl-7"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t('admin.products.categoryLabel')}</label>
@@ -315,8 +355,10 @@ function ProductRow({
   onDrop: () => void
   isDragging: boolean
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { currency } = useCurrency()
   const thumb = product.image_urls[0]
+  const displayName = product.name_he ?? product.name
   const points = product.points_override ?? derivePoints(product.price_cents / 100, pointsPerDollar)
   return (
     <div
@@ -336,7 +378,7 @@ function ProductRow({
       {/* Thumbnail */}
       <div className="w-10 h-10 rounded-md overflow-hidden border shrink-0 bg-muted flex items-center justify-center">
         {thumb ? (
-          <img src={thumb} alt={product.name} className="w-full h-full object-cover" />
+          <img src={thumb} alt={displayName} className="w-full h-full object-cover" />
         ) : (
           <Package size={16} className="text-muted-foreground/40" />
         )}
@@ -345,13 +387,13 @@ function ProductRow({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium truncate">{product.name}</span>
+          <span className="text-sm font-medium truncate">{displayName}</span>
           {product.category && (
             <span className="text-xs text-muted-foreground">{product.category}</span>
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-          <span>{priceFmt(product.price_cents)}</span>
+          <span>{formatPrice(product.price_cents, currency, i18n.language)}</span>
           {points != null && (
             <>
               <span>·</span>
@@ -391,6 +433,9 @@ export default function OwnerProducts() {
   const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
   const { program } = useLoyaltyProgram(ownedBusinessId)
+  const { business } = useBusiness()
+  const defaultLanguage = business?.default_language
+  const hebrewOnly = defaultLanguage === 'he'
   const pointsPerDollar = (program?.earn_rules as EarnRules | undefined)?.points_per_dollar ?? null
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -426,8 +471,8 @@ export default function OwnerProducts() {
   function openEdit(product: Product) {
     setEditingId(product.id)
     setDraft({
-      name: product.name,
-      description: product.description ?? '',
+      name: hebrewOnly ? (product.name_he ?? product.name) : product.name,
+      description: hebrewOnly ? (product.description_he ?? product.description ?? '') : (product.description ?? ''),
       name_he: product.name_he ?? '',
       description_he: product.description_he ?? '',
       price_dollars: (product.price_cents / 100).toFixed(2),
@@ -473,8 +518,8 @@ export default function OwnerProducts() {
     const payload = {
       name: draft.name.trim(),
       description: draft.description.trim() || null,
-      name_he: draft.name_he.trim() || null,
-      description_he: draft.description_he.trim() || null,
+      name_he: hebrewOnly ? draft.name.trim() : (draft.name_he.trim() || null),
+      description_he: hebrewOnly ? (draft.description.trim() || null) : (draft.description_he.trim() || null),
       price_cents: Math.round(Number(draft.price_dollars) * 100),
       category: draft.category.trim() || null,
       points_override: draft.points_override !== '' ? Number(draft.points_override) : null,
@@ -604,6 +649,7 @@ export default function OwnerProducts() {
         open={drawerOpen}
         draft={draft}
         pointsPerDollar={pointsPerDollar}
+        defaultLanguage={defaultLanguage}
         onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
         onSave={handleSave}
         onClose={() => setDrawerOpen(false)}
