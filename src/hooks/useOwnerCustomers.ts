@@ -6,6 +6,7 @@ export type OwnerCustomer = {
   id: string
   name: string
   email: string | null
+  phone: string | null
   tier: string | null
   points: number
   lifetime_points: number
@@ -32,7 +33,7 @@ export function useOwnerCustomers() {
       const { data, error: err } = await supabase
         .from('customers')
         .select(
-          'id, name, email, tier, points, lifetime_points, last_visit_at, joined_at, status, punch_card_count, churn_risk_score, churn_risk_reason',
+          'id, name, email, phone, tier, points, lifetime_points, last_visit_at, joined_at, status, punch_card_count, churn_risk_score, churn_risk_reason',
         )
         .eq('business_id', ownedBusinessId)
         .order('last_visit_at', { ascending: false, nullsFirst: false })

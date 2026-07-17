@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
+import { cn, normalizePhone } from '@/lib/utils'
 import type { Customer, LoyaltyProgram } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -40,10 +40,6 @@ function computePoints(purchaseAmount: number, program: LoyaltyProgram, lifetime
   const ppd = program.earn_rules?.points_per_dollar ?? 0
   const multiplier = currentTierFor(program, lifetimePoints)?.multiplier ?? 1
   return Math.floor(purchaseAmount * ppd * multiplier)
-}
-
-function normalizePhone(raw: string): string {
-  return raw.replace(/\D/g, '')
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
