@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { X, Check, Gift, CreditCard, Star, Users, TrendingUp, TrendingDown } from 'lucide-react'
+import { X, Check, Gift, CreditCard, Star, Users, TrendingUp, TrendingDown, Phone, Pencil } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
-import { cn } from '@/lib/utils'
+import { cn, normalizePhone } from '@/lib/utils'
 import { Drawer } from '@/components/owner/drawer'
 import type { OwnerCustomer } from '@/hooks/useOwnerCustomers'
 
@@ -133,6 +133,11 @@ function PanelContent({
   const [giftError, setGiftError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [localPoints, setLocalPoints] = useState(customer.points)
+  const [phone, setPhone] = useState(customer.phone)
+  const [editingPhone, setEditingPhone] = useState(false)
+  const [phoneDraft, setPhoneDraft] = useState('')
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -202,6 +207,36 @@ function PanelContent({
 
   useEffect(() => { load() }, [load])
   useEffect(() => { setLocalPoints(customer.points) }, [customer.points])
+  useEffect(() => { setPhone(customer.phone) }, [customer.phone])
+
+  function startEditPhone() {
+    setPhoneDraft(phone ?? '')
+    setPhoneError(null)
+    setEditingPhone(true)
+  }
+
+  async function handleSavePhone(e: React.FormEvent) {
+    e.preventDefault()
+    const normalized = normalizePhone(phoneDraft)
+    if (phoneDraft.trim() && normalized.length < 7) {
+      setPhoneError(t('admin.customerDetail.phoneInvalid'))
+      return
+    }
+    setPhoneSaving(true)
+    setPhoneError(null)
+
+    const { error: phoneErr } = await supabase.rpc('update_customer_phone', {
+      p_customer_id: customer.id,
+      p_phone: normalized || null,
+    })
+
+    if (phoneErr) { setPhoneError(phoneErr.message); setPhoneSaving(false); return }
+
+    setPhone(normalized || null)
+    setPhoneSaving(false)
+    setEditingPhone(false)
+    setToast(t('admin.customerDetail.phoneUpdated'))
+  }
 
   async function handleGift() {
     setGiftError(null)
@@ -267,6 +302,53 @@ function PanelContent({
               {tierLabel(t, customer.tier)}
             </span>
           </div>
+        )}
+
+        {/* Phone */}
+        <div className="px-5 py-3 border-b flex items-center gap-2">
+          <Phone size={13} className="text-muted-foreground shrink-0" />
+          {editingPhone ? (
+            <form onSubmit={handleSavePhone} className="flex items-center gap-2 flex-1 min-w-0">
+              <Input
+                autoFocus
+                type="tel"
+                value={phoneDraft}
+                onChange={e => { setPhoneDraft(e.target.value); setPhoneError(null) }}
+                placeholder={t('admin.customerDetail.phonePlaceholder')}
+                aria-label={t('admin.customerDetail.phonePlaceholder')}
+                className="h-7 text-xs flex-1"
+              />
+              <Button type="submit" size="sm" className="h-7 px-2 text-xs shrink-0" disabled={phoneSaving}>
+                {phoneSaving ? t('common.saving') : t('common.save')}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs shrink-0"
+                onClick={() => { setEditingPhone(false); setPhoneError(null) }}
+              >
+                {t('common.cancel')}
+              </Button>
+            </form>
+          ) : (
+            <>
+              <span className="text-xs flex-1 truncate">
+                {phone || t('admin.customerDetail.phoneNotSet')}
+              </span>
+              <button
+                type="button"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={startEditPhone}
+                aria-label={t('admin.customerDetail.phoneEditAriaLabel')}
+              >
+                <Pencil size={12} />
+              </button>
+            </>
+          )}
+        </div>
+        {phoneError && (
+          <p className="px-5 py-2 -mt-1 text-xs text-destructive border-b">{phoneError}</p>
         )}
 
         {loading ? (

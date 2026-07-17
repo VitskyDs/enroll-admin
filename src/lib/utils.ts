@@ -6,6 +6,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Digits-only normalization, used consistently for both phone-number lookup
+// (award-points-dialog.tsx) and phone-number edits (customer-detail-panel.tsx)
+// so a saved number always matches what a lookup later searches for.
+export function normalizePhone(raw: string): string {
+  return raw.replace(/\D/g, '')
+}
+
 export type EarnRuleDescriptor = { key: string; count?: number }
 
 export function formatEarnRules(rules: EarnRules | null | undefined): EarnRuleDescriptor[] {
