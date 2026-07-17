@@ -5,6 +5,8 @@ export type {
   RewardTiersConfig,
   ReferralRules,
   Product,
+  Service,
+  ServiceSubscription,
   CustomerFavorite,
   Customer,
   Offer,
