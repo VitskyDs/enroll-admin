@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { X, Check, Gift, CreditCard, Star, Users, TrendingUp, TrendingDown, Phone, Pencil } from 'lucide-react'
+import { X, Check, Gift, CreditCard, Star, Users, TrendingUp, TrendingDown, Phone, Pencil, Repeat } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
 import { cn, normalizePhone } from '@/lib/utils'
 import { Drawer } from '@/components/owner/drawer'
 import type { OwnerCustomer } from '@/hooks/useOwnerCustomers'
+import type { ServiceSubscription } from '@/types'
 
 // Retains the last non-null customer so its content stays visible while the
 // drawer animates out after `customer` is cleared.
@@ -33,9 +34,14 @@ type Referral = {
   status: string
 }
 
+type Subscription = Pick<ServiceSubscription, 'id' | 'interval' | 'status' | 'next_renewal_at' | 'cancelled_at'> & {
+  service_name: string
+}
+
 type PanelData = {
   transactions: Transaction[]
   referrals: Referral[]
+  subscriptions: Subscription[]
   punchCardEnabled: boolean
   punchTarget: number | null
   punchRewardName: string | null
@@ -74,6 +80,9 @@ function reasonLabel(t: TFunction, reason: string) {
     birthday_bonus: t('history.reason.birthday_bonus'),
     catch_up_gift: t('admin.customerDetail.reasonCatchUpGift'),
     punch_card: t('admin.customerDetail.reasonPunchCard'),
+    service_subscription_start: t('history.reason.service_subscription_start'),
+    service_subscription_renewal: t('history.reason.service_subscription_renewal'),
+    service_purchase: t('history.reason.service_purchase'),
   }
   return map[reason] ?? reason.replace(/_/g, ' ')
 }
@@ -141,7 +150,7 @@ function PanelContent({
 
   const load = useCallback(async () => {
     setLoading(true)
-    const [txRes, refRes, progRes] = await Promise.all([
+    const [txRes, refRes, progRes, subRes] = await Promise.all([
       supabase
         .from('point_transactions')
         .select('id, points, reason, created_at')
@@ -160,6 +169,12 @@ function PanelContent({
         .select('punch_card_enabled, punch_card_target, punch_card_reward_type, punch_card_reward_product_ids, punch_card_reward_category')
         .eq('business_id', businessId)
         .maybeSingle(),
+      supabase
+        .from('service_subscriptions')
+        .select('id, interval, status, next_renewal_at, cancelled_at, services(name)')
+        .eq('customer_id', customer.id)
+        .eq('business_id', businessId)
+        .order('started_at', { ascending: false }),
     ])
 
     // Fetch referee names
@@ -195,15 +210,28 @@ function PanelContent({
       punchRewardName = progRes.data?.punch_card_reward_category ?? null
     }
 
+    type SubscriptionRow = Omit<Subscription, 'service_name'> & {
+      services: { name: string } | { name: string }[] | null
+    }
+    const subscriptions: Subscription[] = ((subRes.data ?? []) as SubscriptionRow[]).map(s => ({
+      id: s.id,
+      interval: s.interval,
+      status: s.status,
+      next_renewal_at: s.next_renewal_at,
+      cancelled_at: s.cancelled_at,
+      service_name: (Array.isArray(s.services) ? s.services[0]?.name : s.services?.name) ?? t('admin.customerDetail.unknownReferee'),
+    }))
+
     setData({
       transactions: (txRes.data ?? []) as Transaction[],
       referrals,
+      subscriptions,
       punchCardEnabled: progRes.data?.punch_card_enabled ?? false,
       punchTarget: progRes.data?.punch_card_target ?? null,
       punchRewardName,
     })
     setLoading(false)
-  }, [customer.id, businessId])
+  }, [customer.id, businessId, t])
 
   useEffect(() => { load() }, [load])
   useEffect(() => { setLocalPoints(customer.points) }, [customer.points])
@@ -467,7 +495,7 @@ function PanelContent({
             </div>
 
             {/* Referrals */}
-            <div className="px-5 py-4">
+            <div className="px-5 py-4 border-b">
               <p className="text-xs font-medium flex items-center gap-1.5 mb-3">
                 <Users size={13} className="text-muted-foreground" />
                 {t('admin.customerDetail.referralsCount', { count: data?.referrals.length ?? 0 })}
@@ -481,6 +509,46 @@ function PanelContent({
                       <span className="font-medium truncate">{r.referee?.name ?? t('admin.customerDetail.unknownReferee')}</span>
                       <span className="text-muted-foreground shrink-0">
                         {r.referee?.joined_at ? formatDate(r.referee.joined_at) : '—'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Service subscriptions */}
+            <div className="px-5 py-4">
+              <p className="text-xs font-medium flex items-center gap-1.5 mb-3">
+                <Repeat size={13} className="text-muted-foreground" />
+                {t('admin.customerDetail.subscriptionsCount', { count: data?.subscriptions.length ?? 0 })}
+              </p>
+              {data?.subscriptions.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t('admin.customerDetail.subscriptionsEmpty')}</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {data?.subscriptions.map(s => (
+                    <div key={s.id} className="flex items-center justify-between gap-2 text-xs">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{s.service_name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {s.interval === 'weekly'
+                            ? t('admin.services.subscriptionIntervalWeekly')
+                            : t('admin.services.subscriptionIntervalMonthly')}
+                          {' · '}
+                          {s.status === 'cancelled'
+                            ? t('admin.customerDetail.subscriptionCancelledOn', { date: formatDate(s.cancelled_at) })
+                            : t('admin.customerDetail.subscriptionNextRenewal', { date: formatDate(s.next_renewal_at) })}
+                        </p>
+                      </div>
+                      <span className={cn(
+                        'inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium shrink-0',
+                        s.status === 'active'
+                          ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                          : 'text-zinc-500 bg-zinc-50 border-zinc-200',
+                      )}>
+                        {s.status === 'active'
+                          ? t('admin.customerDetail.subscriptionStatusActive')
+                          : t('admin.customerDetail.subscriptionStatusCancelled')}
                       </span>
                     </div>
                   ))}

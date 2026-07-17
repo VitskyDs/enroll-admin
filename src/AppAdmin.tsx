@@ -13,6 +13,7 @@ const OwnerOnboarding = lazy(() => import('@/pages/owner/Onboarding'))
 const OwnerDashboard = lazy(() => import('@/pages/owner/Dashboard'))
 const OwnerCustomers = lazy(() => import('@/pages/owner/Customers'))
 const OwnerProducts = lazy(() => import('@/pages/owner/Products'))
+const OwnerServices = lazy(() => import('@/pages/owner/Services'))
 const OwnerRewards = lazy(() => import('@/pages/owner/Rewards'))
 const OwnerProgram = lazy(() => import('@/pages/owner/Program'))
 const OwnerSettings = lazy(() => import('@/pages/owner/Settings'))
@@ -86,6 +87,7 @@ function AppRoutes() {
           <Route path="dashboard" element={<OwnerDashboard />} />
           <Route path="customers" element={<OwnerCustomers />} />
           <Route path="products" element={<OwnerProducts />} />
+          <Route path="services" element={<OwnerServices />} />
           <Route path="rewards" element={<OwnerRewards />} />
           <Route path="program" element={<OwnerProgram />} />
           <Route path="settings" element={<OwnerSettings />} />
