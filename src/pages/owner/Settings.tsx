@@ -71,10 +71,12 @@ function ImageUploadField({
   label,
   preview,
   onFile,
+  error,
 }: {
   label: string
   preview: string | null
   onFile: (f: File) => void
+  error?: string
 }) {
   const { t } = useTranslation()
   const ref = useRef<HTMLInputElement>(null)
@@ -110,6 +112,7 @@ function ImageUploadField({
         const f = e.target.files?.[0]
         if (f) onFile(f)
       }} />
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   )
 }
@@ -242,10 +245,12 @@ export default function OwnerSettings() {
     setSaving(true)
 
     let logoUrl: string | undefined
+    let logoUploadFailed = false
 
     if (logoFile) {
       const url = await uploadImage(logoFile, 'business-assets', `${ownedBusinessId}/logo`)
       if (url) { logoUrl = url; setLogoPreview(url) }
+      else logoUploadFailed = true
     }
 
     const payload: Record<string, string | null> = {
@@ -270,8 +275,15 @@ export default function OwnerSettings() {
 
     setOriginalSlug(trimmedSlug)
     setSlugAvailable(false)
-    setLogoFile(null)
     if (currency) setCurrencyLocked(true)
+
+    if (logoUploadFailed) {
+      setErrors(prev => ({ ...prev, logo: t('admin.settings.logoUploadFailed') }))
+      return
+    }
+
+    setLogoFile(null)
+    setErrors(prev => { if (!prev.logo) return prev; const n = { ...prev }; delete n.logo; return n })
     setToast(t('admin.settings.settingsSaved'))
   }
 
@@ -377,6 +389,7 @@ export default function OwnerSettings() {
             label={t('admin.settings.logoLabel')}
             preview={logoPreview}
             onFile={f => { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)) }}
+            error={errors.logo}
           />
         </div>
       </section>
