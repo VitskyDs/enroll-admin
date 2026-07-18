@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   TrendingUp, TrendingDown, Minus, ArrowRight, AlertTriangle, CheckCircle2,
-  Search, UserPlus, Sparkles, Send, ChevronLeft, Clock,
+  Search, Sparkles, ChevronLeft, Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@vitskyds/enroll-ui'
@@ -196,9 +196,7 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
 }
 
 const QUICK_ACTIONS = [
-  { to: '/owner/customers', icon: UserPlus, titleKey: 'admin.dashboard.addCustomer', descKey: 'admin.dashboard.addCustomerDesc' },
   { to: null, icon: Sparkles, titleKey: 'admin.awardPoints.title', descKey: 'admin.dashboard.awardPointsDesc' },
-  { to: '/owner/catch-up', icon: Send, titleKey: 'admin.dashboard.sendCatchUp', descKey: 'admin.dashboard.sendCatchUpDesc' },
 ]
 
 function QuickActionsCard({
@@ -238,7 +236,7 @@ function QuickActionsCard({
                 <button
                   type="button"
                   onClick={onAwardPoints}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 text-right hover:bg-button-ghost-bg-hover transition-colors group"
+                  className="w-full flex items-center gap-3 px-5 py-3.5 text-right hover:bg-button-ghost-bg-hover transition-colors group cursor-pointer"
                 >
                   {inner}
                 </button>
