@@ -440,7 +440,7 @@ export default function OwnerRewards() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{t('admin.nav.rewards')}</h1>
         <Button size="sm" onClick={openAdd}>
