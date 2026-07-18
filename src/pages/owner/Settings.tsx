@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Upload, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -24,8 +24,6 @@ const INDUSTRIES = [
   { value: 'entertainment',          labelKey: 'admin.settings.industryEntertainment' },
   { value: 'other',                  labelKey: 'admin.settings.industryOther' },
 ] as const
-
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -130,8 +128,6 @@ export default function OwnerSettings() {
   // Form state
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
-  const [originalSlug, setOriginalSlug] = useState('')
-  const [slugAvailable, setSlugAvailable] = useState(false)
   const [tagline, setTagline] = useState('')
   const [industry, setIndustry] = useState('')
   const [address, setAddress] = useState('')
@@ -156,7 +152,6 @@ export default function OwnerSettings() {
         if (ignore || !data) return
         setName(data.name ?? '')
         setSlug(data.slug ?? '')
-        setOriginalSlug(data.slug ?? '')
         setTagline(data.tagline ?? '')
         setIndustry(data.industry ?? '')
         setAddress(data.address ?? '')
@@ -173,50 +168,6 @@ export default function OwnerSettings() {
     }
   }, [ownedBusinessId])
 
-  // ── Slug validation ────────────────────────────────────────────────────────
-
-  // Uniqueness check — exclude own business. Shared by the live-typing check below
-  // and handleSave, so a taken slug is always caught regardless of UI timing.
-  const isSlugTaken = useCallback(async (value: string): Promise<boolean> => {
-    const { data } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('slug', value)
-      .neq('id', ownedBusinessId!)
-      .maybeSingle()
-    return !!data
-  }, [ownedBusinessId])
-
-  // Called from the slug input's onChange (an event handler, not an effect) so format
-  // errors and the revert-when-cleared behavior apply the instant the owner types.
-  function handleSlugChange(rawValue: string) {
-    const value = rawValue.toLowerCase()
-    const next = value === '' ? originalSlug : value
-    setSlug(next)
-    setSlugAvailable(false)
-    setErrors(prev => {
-      if (next === originalSlug) { if (!prev.slug) return prev; const n = { ...prev }; delete n.slug; return n }
-      if (!SLUG_RE.test(next)) return { ...prev, slug: t('admin.settings.slugFormatInvalid') }
-      if (!prev.slug) return prev
-      const n = { ...prev }; delete n.slug; return n
-    })
-  }
-
-  // Debounces the availability check against the DB once the slug has changed and
-  // passes the format check — the synchronous cases above are handled in the onChange.
-  useEffect(() => {
-    if (!ownedBusinessId || slug === originalSlug || !SLUG_RE.test(slug)) return
-    const handle = setTimeout(async () => {
-      const taken = await isSlugTaken(slug)
-      setSlugAvailable(!taken)
-      setErrors(prev => {
-        if (!taken) { if (!prev.slug) return prev; const n = { ...prev }; delete n.slug; return n }
-        return { ...prev, slug: t('admin.settings.slugTaken') }
-      })
-    }, 400)
-    return () => clearTimeout(handle)
-  }, [slug, originalSlug, ownedBusinessId, isSlugTaken])
-
   // ── Image upload ───────────────────────────────────────────────────────────
 
   async function uploadImage(file: File, bucket: string, pathPrefix: string): Promise<string | null> {
@@ -230,17 +181,9 @@ export default function OwnerSettings() {
   // ── Save ───────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    const trimmedSlug = slug.trim()
     const errs: Record<string, string> = {}
     if (!name.trim()) errs.name = t('admin.settings.businessNameRequired')
-    if (!trimmedSlug) errs.slug = t('admin.settings.slugRequired')
-    else if (!SLUG_RE.test(trimmedSlug)) errs.slug = t('admin.settings.slugFormatInvalid')
     if (Object.keys(errs).length) { setErrors(errs); return }
-
-    if (await isSlugTaken(trimmedSlug)) {
-      setErrors(prev => ({ ...prev, slug: t('admin.settings.slugTaken') }))
-      return
-    }
 
     setSaving(true)
 
@@ -255,7 +198,6 @@ export default function OwnerSettings() {
 
     const payload: Record<string, string | null> = {
       name: name.trim(),
-      slug: slug.trim(),
       tagline: tagline.trim() || null,
       industry: industry || null,
       address: address.trim() || null,
@@ -273,8 +215,6 @@ export default function OwnerSettings() {
     setSaving(false)
     if (error) { setErrors({ save: error.message }); return }
 
-    setOriginalSlug(trimmedSlug)
-    setSlugAvailable(false)
     if (currency) setCurrencyLocked(true)
 
     if (logoUploadFailed) {
@@ -318,29 +258,10 @@ export default function OwnerSettings() {
               placeholder={t('admin.settings.businessNamePlaceholder')}
             />
           </Field>
-          <Field
-            label={t('admin.settings.slugLabel')}
-            hint={t('admin.settings.slugHint')}
-            error={errors.slug}
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground shrink-0">enroll.app/join/</span>
-              <div className="relative flex-1">
-                <Input
-                  value={slug}
-                  onChange={e => handleSlugChange(e.target.value)}
-                  className={cn(errors.slug && 'border-destructive focus-visible:ring-destructive')}
-                  placeholder="corner-cup"
-                />
-                {slugAvailable && (
-                  <Check
-                    size={14}
-                    role="img"
-                    aria-label={t('admin.settings.slugAvailableAriaLabel')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600"
-                  />
-                )}
-              </div>
+          <Field label={t('admin.settings.slugLabel')} hint={t('admin.settings.slugHint')}>
+            <div className="flex items-center gap-1 h-9 px-3 rounded-md border border-input bg-muted text-sm text-muted-foreground select-text">
+              <span className="shrink-0">enroll.app/join/</span>
+              <span className="text-foreground">{slug}</span>
             </div>
           </Field>
           <Field label={t('admin.settings.taglineLabel')}>
