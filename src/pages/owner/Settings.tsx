@@ -136,13 +136,14 @@ export default function OwnerSettings() {
 
   useEffect(() => {
     if (!ownedBusinessId) return
+    let ignore = false
     supabase
       .from('businesses')
       .select('name, slug, tagline, industry, address, hours, brand_color, logo_url, cover_image_url, currency')
       .eq('id', ownedBusinessId)
       .single()
       .then(({ data }) => {
-        if (!data) return
+        if (ignore || !data) return
         setName(data.name ?? '')
         setSlug(data.slug ?? '')
         setOriginalSlug(data.slug ?? '')
@@ -158,6 +159,9 @@ export default function OwnerSettings() {
         setCoverPreview(data.cover_image_url ?? null)
         setLoading(false)
       })
+    return () => {
+      ignore = true
+    }
   }, [ownedBusinessId])
 
   // ── Slug validation ────────────────────────────────────────────────────────
