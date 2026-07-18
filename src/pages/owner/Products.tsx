@@ -440,12 +440,16 @@ function ProductRow({
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
+      onClick={onEdit}
       className={cn(
-        'flex items-center gap-3 rounded-lg border p-3 bg-card transition-all',
+        'flex items-center gap-3 rounded-lg border p-3 bg-card transition-all cursor-pointer hover:bg-muted/40',
         isDragging && 'opacity-40 scale-[0.98]',
       )}
     >
-      <div className="cursor-grab active:cursor-grabbing text-muted-foreground shrink-0 touch-none">
+      <div
+        onClick={e => e.stopPropagation()}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground shrink-0 touch-none"
+      >
         <GripVertical size={16} />
       </div>
 
@@ -483,7 +487,7 @@ function ProductRow({
 
       {/* Status toggle */}
       <button
-        onClick={onStatusToggle}
+        onClick={e => { e.stopPropagation(); onStatusToggle() }}
         title={t('admin.products.cycleStatusTitle')}
         className={cn(
           'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium shrink-0 transition-colors',
@@ -494,7 +498,12 @@ function ProductRow({
       </button>
 
       {/* Edit */}
-      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onEdit}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        onClick={e => { e.stopPropagation(); onEdit() }}
+      >
         <Pencil size={14} />
       </Button>
     </div>
