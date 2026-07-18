@@ -82,9 +82,18 @@ function ImageUploadField({
     <div className="space-y-1.5">
       <label className="text-sm font-medium">{label}</label>
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={t('admin.settings.uploadImageAriaLabel', { label })}
         onClick={() => ref.current?.click()}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            ref.current?.click()
+          }
+        }}
         className={cn(
-          'relative flex items-center justify-center rounded-lg border-2 border-dashed cursor-pointer hover:border-foreground/40 transition-colors aspect-square h-32 w-32',
+          'relative flex items-center justify-center rounded-lg border-2 border-dashed cursor-pointer hover:border-foreground/40 transition-colors aspect-square h-32 w-32 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
           preview ? 'border-transparent overflow-hidden' : 'border-muted-foreground/30',
         )}
       >
