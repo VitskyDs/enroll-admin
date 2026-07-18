@@ -12,6 +12,7 @@ import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
 import { cn, formatPrice, formatCurrencyUnit } from '@/lib/utils'
 import { Drawer } from '@/components/owner/drawer'
+import { CategoryCombobox } from '@/components/owner/category-combobox'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,7 @@ function ProductForm({
   draft,
   pointsPerDollar,
   defaultLanguage,
+  categoryOptions,
   onChange,
   onSave,
   onClose,
@@ -173,6 +175,7 @@ function ProductForm({
   draft: FormDraft
   pointsPerDollar: number | null
   defaultLanguage: string | null | undefined
+  categoryOptions: string[]
   onChange: (patch: Partial<FormDraft>) => void
   onSave: () => void
   onClose: () => void
@@ -335,10 +338,12 @@ function ProductForm({
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">{t('admin.products.categoryLabel')}</label>
-              <Input
+              <CategoryCombobox
                 value={draft.category}
-                onChange={e => onChange({ category: e.target.value })}
+                onChange={category => onChange({ category })}
+                options={categoryOptions}
                 placeholder={t('admin.products.categoryPlaceholder')}
+                dir="rtl"
               />
             </div>
           </div>
@@ -518,6 +523,10 @@ export default function OwnerProducts() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [deleting, setDeleting] = useState(false)
   const dragIndex = useRef<number | null>(null)
+
+  const categoryOptions = Array.from(
+    new Set(products.map(p => p.category?.trim()).filter((c): c is string => !!c)),
+  ).sort((a, b) => a.localeCompare(b))
 
   const load = useCallback(async () => {
     if (!ownedBusinessId) return
@@ -740,6 +749,7 @@ export default function OwnerProducts() {
         draft={draft}
         pointsPerDollar={pointsPerDollar}
         defaultLanguage={defaultLanguage}
+        categoryOptions={categoryOptions}
         onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
         onSave={handleSave}
         onClose={() => setDrawerOpen(false)}
