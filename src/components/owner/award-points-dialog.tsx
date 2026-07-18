@@ -13,7 +13,8 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog'
-import { cn, normalizePhone } from '@/lib/utils'
+import { useCurrency } from '@/contexts/CurrencyContext'
+import { cn, formatCurrencyUnit, normalizePhone } from '@/lib/utils'
 import type { Customer, LoyaltyProgram } from '@/types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -59,7 +60,8 @@ export function AwardPointsDialog({
   businessId: string
   onSuccess: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { currency } = useCurrency()
   const [phase, setPhase] = useState<Phase>('lookup')
   const [phone, setPhone] = useState('')
   const [searching, setSearching] = useState(false)
@@ -225,16 +227,23 @@ export function AwardPointsDialog({
               <label className="text-sm font-medium" htmlFor="purchase-amount">
                 {t('admin.awardPoints.purchaseAmountLabel')}
               </label>
-              <Input
-                id="purchase-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="0.00"
-                value={purchaseAmount}
-                onChange={e => { setPurchaseAmount(e.target.value); setSubmitError(null) }}
-                autoFocus
-              />
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                  {formatCurrencyUnit(currency, i18n.language)}
+                </span>
+                <Input
+                  id="purchase-amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  dir="ltr"
+                  value={purchaseAmount}
+                  onChange={e => { setPurchaseAmount(e.target.value); setSubmitError(null) }}
+                  autoFocus
+                  className="pl-7 text-left"
+                />
+              </div>
               {points !== null && points > 0 && (
                 <p className="text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">{t('admin.awardPoints.willCredit', { count: points })}</span>
