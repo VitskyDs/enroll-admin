@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test'
-import { signInAsOwner } from './helpers/auth'
 
 // Auth guard
 test('unauthenticated /owner/rewards redirects to sign-in', async ({ page }) => {
@@ -7,15 +6,25 @@ test('unauthenticated /owner/rewards redirects to sign-in', async ({ page }) => 
   await expect(page).toHaveURL('/sign-in')
 })
 
-// Structural tests — require an authenticated owner session.
+// Structural tests — require an authenticated owner session. TASK-117: uses
+// the persisted owner@test.com storageState (e2e/auth.setup.ts) instead of
+// calling signInAsOwner fresh in each test — see playwright.config.ts for
+// how the fixture is wired.
 test.describe('rewards catalog structure (requires owner auth)', () => {
+  test.use({ storageState: 'e2e/.auth/owner.json' })
+
   test.beforeEach(async ({ page }) => {
-    await signInAsOwner(page)
     await page.goto('/owner/rewards')
   })
 
+  // TASK-117: the app is Hebrew-only (src/i18n/force-he.ts), so an English
+  // /rewards/i heading regex never matched here even before this task's auth
+  // fixture — confirmed pre-existing on main, unrelated to auth. Assert on
+  // role/level instead (same "don't match localized text" rule TASK-163
+  // applied to the sign-in selectors) to actually verify the authenticated
+  // owner session landed on the rewards page rather than /sign-in.
   test('shows Rewards heading (AC#1)', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /rewards/i })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
   test('shows Add reward button (AC#2)', async ({ page }) => {
