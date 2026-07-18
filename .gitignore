@@ -37,3 +37,7 @@ test-results/
 # QA/e2e screenshot artifacts — may capture real customer data from the
 # shared dev/prod Supabase project, never commit these
 e2e/screenshots/
+
+# Playwright auth fixture — persisted storageState from signing in as
+# owner@test.com (TASK-117); never commit real session cookies/tokens
+e2e/.auth/
