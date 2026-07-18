@@ -247,7 +247,10 @@ function RewardRow({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-3 rounded-lg border p-3 bg-card">
+    <div
+      onClick={onEdit}
+      className="flex items-center gap-3 rounded-lg border p-3 bg-card cursor-pointer hover:bg-muted/40 transition-colors"
+    >
       {/* Thumbnail */}
       <div className="w-10 h-10 rounded-md overflow-hidden border shrink-0 bg-muted flex items-center justify-center">
         {reward.image_url ? (
@@ -265,7 +268,7 @@ function RewardRow({
 
       {/* Status toggle */}
       <button
-        onClick={onStatusToggle}
+        onClick={e => { e.stopPropagation(); onStatusToggle() }}
         title={t('admin.rewards.toggleStatusTitle')}
         className={cn(
           'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium shrink-0 transition-colors',
@@ -278,7 +281,12 @@ function RewardRow({
       </button>
 
       {/* Edit */}
-      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onEdit}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 shrink-0"
+        onClick={e => { e.stopPropagation(); onEdit() }}
+      >
         <Pencil size={14} />
       </Button>
 
@@ -288,7 +296,7 @@ function RewardRow({
         size="icon"
         className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
         title={t('admin.rewards.deleteButtonTitle')}
-        onClick={onDelete}
+        onClick={e => { e.stopPropagation(); onDelete() }}
       >
         <Trash2 size={14} />
       </Button>
