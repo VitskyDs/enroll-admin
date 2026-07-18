@@ -435,7 +435,8 @@ export default function OwnerSettings() {
                 const v = e.target.value
                 if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setBrandColor(v)
               }}
-              className="w-32 font-mono text-sm"
+              dir="ltr"
+              className="w-32 font-mono text-sm text-left"
               placeholder="#000000"
             />
             <div
