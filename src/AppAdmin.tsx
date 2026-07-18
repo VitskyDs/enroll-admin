@@ -11,6 +11,7 @@ const SignIn = lazy(() => import('@/pages/SignIn'))
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'))
 const OwnerOnboarding = lazy(() => import('@/pages/owner/Onboarding'))
 const OwnerDashboard = lazy(() => import('@/pages/owner/Dashboard'))
+const OwnerActivity = lazy(() => import('@/pages/owner/Activity'))
 const OwnerCustomers = lazy(() => import('@/pages/owner/Customers'))
 const OwnerProducts = lazy(() => import('@/pages/owner/Products'))
 const OwnerServices = lazy(() => import('@/pages/owner/Services'))
@@ -85,6 +86,7 @@ function AppRoutes() {
         >
           <Route index element={<Navigate to="/owner/dashboard" replace />} />
           <Route path="dashboard" element={<OwnerDashboard />} />
+          <Route path="activity" element={<OwnerActivity />} />
           <Route path="customers" element={<OwnerCustomers />} />
           <Route path="products" element={<OwnerProducts />} />
           <Route path="services" element={<OwnerServices />} />

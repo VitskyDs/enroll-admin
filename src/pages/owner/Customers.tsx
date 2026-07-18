@@ -9,6 +9,7 @@ import { Button } from '@vitskyds/enroll-ui'
 import { useOwnerCustomers, type OwnerCustomer } from '@/hooks/useOwnerCustomers'
 import { useAuth } from '@/contexts/AuthContext'
 import { CustomerDetailPanel, CustomerDetailDrawer } from '@/components/owner/customer-detail-panel'
+import { NativeSelect } from '@/components/owner/native-select'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -119,33 +120,6 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
         <X size={11} />
       </button>
     </span>
-  )
-}
-
-function NativeSelect({
-  value,
-  onChange,
-  children,
-  className,
-}: {
-  value: string
-  onChange: (v: string) => void
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className={cn(
-        'h-9 rounded-md border border-input bg-transparent px-2.5 py-1 text-sm shadow-sm',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        'text-foreground',
-        className,
-      )}
-    >
-      {children}
-    </select>
   )
 }
 
