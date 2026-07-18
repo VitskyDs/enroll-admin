@@ -4,6 +4,7 @@ import { Plus, Pencil, Gift, X, Check, Upload, Trash2, TriangleAlert } from 'luc
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBusiness } from '@/hooks/useBusiness'
+import { Drawer } from '@/components/owner/drawer'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
 import { cn } from '@/lib/utils'
@@ -127,6 +128,7 @@ function DeleteConfirm({
 // ─── Reward form drawer ───────────────────────────────────────────────────────
 
 function RewardForm({
+  open,
   draft,
   onChange,
   onSave,
@@ -136,6 +138,7 @@ function RewardForm({
   mode,
   activeProducts,
 }: {
+  open: boolean
   draft: FormDraft
   onChange: (patch: Partial<FormDraft>) => void
   onSave: () => void
@@ -165,9 +168,8 @@ function RewardForm({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <aside className="relative ml-auto w-full max-w-md bg-background border-l flex flex-col shadow-xl">
+    <Drawer open={open} onClose={onClose} side="right" className="w-full max-w-md border-l flex flex-col">
+      <>
         <div className="flex items-center justify-between h-14 border-b px-5 shrink-0">
           <span className="font-semibold text-sm">{mode === 'add' ? t('admin.rewards.addTitle') : t('admin.rewards.editTitle')}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
@@ -278,8 +280,8 @@ function RewardForm({
             {saving ? t('common.saving') : mode === 'add' ? t('admin.rewards.addTitle') : t('admin.rewards.saveChanges')}
           </Button>
         </div>
-      </aside>
-    </div>
+      </>
+    </Drawer>
   )
 }
 
@@ -575,18 +577,17 @@ export default function OwnerRewards() {
         </div>
       )}
 
-      {drawerOpen && (
-        <RewardForm
-          draft={draft}
-          onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
-          onSave={handleSave}
-          onClose={() => setDrawerOpen(false)}
-          saving={saving}
-          error={formError}
-          mode={editingId ? 'edit' : 'add'}
-          activeProducts={activeProducts}
-        />
-      )}
+      <RewardForm
+        open={drawerOpen}
+        draft={draft}
+        onChange={patch => setDraft(prev => ({ ...prev, ...patch }))}
+        onSave={handleSave}
+        onClose={() => setDrawerOpen(false)}
+        saving={saving}
+        error={formError}
+        mode={editingId ? 'edit' : 'add'}
+        activeProducts={activeProducts}
+      />
 
       {deleteTarget && (
         <DeleteConfirm
