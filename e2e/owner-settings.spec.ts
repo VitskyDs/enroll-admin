@@ -10,6 +10,21 @@ test('unauthenticated /owner/settings redirects to sign-in', async ({ page }) =>
 // Structural tests — require an authenticated owner session.
 // Fields use a plain sibling <label> with no htmlFor/id association, so
 // getByLabel doesn't resolve them — placeholder text is used instead.
+//
+// TASK-175: the admin app is Hebrew-only (src/i18n/force-he.ts). Locators
+// against this page's own copy (admin.settings.* keys) use the actual
+// rendered Hebrew string — confirmed present in the installed
+// @vitskyds/enroll-core build, same "don't match localized text with English"
+// rule owner-activity.spec.ts and owner-rewards.spec.ts already apply — with
+// a couple of exceptions that stay English/locale-agnostic on purpose:
+//   - the slug input's placeholder ("corner-cup") and the brand hex input's
+//     placeholder ("#000000") are hardcoded literals in Settings.tsx, not
+//     translated, so they render the same in every locale
+//   - the currency toggle's "$ USD" / "₪ ILS" labels are likewise hardcoded,
+//     not translation keys
+// The page heading is asserted by role/level only (no text), matching
+// owner-rewards.spec.ts's "shows Rewards heading" test, since asserting a
+// specific string is unnecessary once role/level already confirms it mounted.
 test.describe('business profile settings (requires owner auth)', () => {
   test.beforeEach(async ({ page }) => {
     await signInAsOwner(page)
@@ -17,23 +32,23 @@ test.describe('business profile settings (requires owner auth)', () => {
   })
 
   test('shows Business profile heading (AC#1)', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /business profile/i })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
   test('shows all basic info fields (AC#1)', async ({ page }) => {
-    await expect(page.getByPlaceholder('Corner Cup')).toBeVisible()
+    await expect(page.getByPlaceholder('קפה הפינה')).toBeVisible()
     await expect(page.getByPlaceholder('corner-cup')).toBeVisible()
-    await expect(page.getByPlaceholder('Your neighborhood coffee shop')).toBeVisible()
+    await expect(page.getByPlaceholder('בית הקפה השכונתי שלכם')).toBeVisible()
     await expect(page.locator('select')).toBeVisible()
-    await expect(page.getByPlaceholder('123 Main St, City, State')).toBeVisible()
-    await expect(page.getByPlaceholder('Mon–Fri 7am–6pm')).toBeVisible()
+    await expect(page.getByPlaceholder('רחוב הרצל 1, תל אביב')).toBeVisible()
+    await expect(page.getByPlaceholder('א׳–ה׳ 7:00–18:00')).toBeVisible()
   })
 
   test('slug with invalid format shows error on blur (AC#3)', async ({ page }) => {
     const slugInput = page.getByPlaceholder('corner-cup')
     await slugInput.fill('Invalid Slug!')
     await slugInput.blur()
-    await expect(page.getByText('Slug must be lowercase letters, numbers, and hyphens only.')).toBeVisible()
+    await expect(page.getByText('הכתובת יכולה לכלול רק אותיות קטנות באנגלית, ספרות ומקפים.')).toBeVisible()
   })
 
   test('slug auto-lowercases on input (AC#3)', async ({ page }) => {
@@ -59,8 +74,8 @@ test.describe('business profile settings (requires owner auth)', () => {
       route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }),
     )
     await page.getByPlaceholder('corner-cup').fill('brand-new-available-slug')
-    await expect(page.getByLabel('Slug is available')).toBeVisible()
-    await expect(page.getByText(/already taken/i)).not.toBeVisible()
+    await expect(page.getByLabel('הכתובת פנויה')).toBeVisible()
+    await expect(page.getByText(/כבר תפוסה/)).not.toBeVisible()
   })
 
   // TASK-111 — typing a taken slug should show the error state and checkmark live,
@@ -70,8 +85,8 @@ test.describe('business profile settings (requires owner auth)', () => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'some-other-business-id' }) }),
     )
     await page.getByPlaceholder('corner-cup').fill('taken-live-slug')
-    await expect(page.getByText(/this slug is already taken/i)).toBeVisible()
-    await expect(page.getByLabel('Slug is available')).not.toBeVisible()
+    await expect(page.getByText(/כבר תפוסה/)).toBeVisible()
+    await expect(page.getByLabel('הכתובת פנויה')).not.toBeVisible()
   })
 
   // TASK-103 — handleSave() previously never re-checked uniqueness, so saving a taken
@@ -88,18 +103,20 @@ test.describe('business profile settings (requires owner auth)', () => {
     )
     const slugInput = page.getByPlaceholder('corner-cup')
     await slugInput.fill('taken-slug')
-    await page.getByRole('button', { name: /save changes/i }).click()
-    await expect(page.getByText(/this slug is already taken/i)).toBeVisible()
-    await expect(page.getByText('Settings saved')).not.toBeVisible()
+    await page.getByRole('button', { name: 'שמירת השינויים' }).click()
+    await expect(page.getByText(/כבר תפוסה/)).toBeVisible()
+    await expect(page.getByText('ההגדרות נשמרו')).not.toBeVisible()
   })
 
-  test('shows logo and cover image upload areas (AC#4, AC#5)', async ({ page }) => {
-    await expect(page.getByText('Logo', { exact: true })).toBeVisible()
-    await expect(page.getByText('Cover image', { exact: true })).toBeVisible()
+  // TASK-175: cover image upload was removed from Settings.tsx (commit
+  // db95164, "remove cover image upload, make logo upload square") — only the
+  // logo field remains, so this no longer asserts a "Cover image" area.
+  test('shows logo upload area (AC#4)', async ({ page }) => {
+    await expect(page.getByText('לוגו', { exact: true })).toBeVisible()
   })
 
   test('shows brand color section with color picker and hex input (AC#6)', async ({ page }) => {
-    await expect(page.getByText('Brand color', { exact: true })).toBeVisible()
+    await expect(page.getByText('צבע המותג', { exact: true })).toBeVisible()
     await expect(page.locator('input[type="color"]')).toBeVisible()
   })
 
@@ -117,8 +134,8 @@ test.describe('business profile settings (requires owner auth)', () => {
       }),
     )
     await page.goto('/owner/settings')
-    await expect(page.getByText('Store currency')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Not set' })).toBeVisible()
+    await expect(page.getByText('מטבע החנות')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'לא נבחר' })).toBeVisible()
     await expect(page.getByRole('button', { name: '$ USD' })).toBeVisible()
     await expect(page.getByRole('button', { name: '₪ ILS' })).toBeVisible()
   })
@@ -138,8 +155,8 @@ test.describe('business profile settings (requires owner auth)', () => {
     )
     await page.goto('/owner/settings')
     await expect(page.getByText('$ USD')).toBeVisible()
-    await expect(page.getByText(/locked once set/i)).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Not set' })).not.toBeVisible()
+    await expect(page.getByText(/ננעל/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'לא נבחר' })).not.toBeVisible()
     await expect(page.getByRole('button', { name: '₪ ILS' })).not.toBeVisible()
   })
 
@@ -164,15 +181,15 @@ test.describe('business profile settings (requires owner auth)', () => {
     )
     await page.goto('/owner/settings')
     await page.getByRole('button', { name: '₪ ILS' }).click()
-    await page.getByRole('button', { name: /save changes/i }).click()
-    await expect(page.getByText('Settings saved')).toBeVisible()
+    await page.getByRole('button', { name: 'שמירת השינויים' }).click()
+    await expect(page.getByText('ההגדרות נשמרו')).toBeVisible()
     await expect(page.getByText('₪ ILS')).toBeVisible()
     await expect(page.getByRole('button', { name: '₪ ILS' })).not.toBeVisible()
   })
 
   test('shows validation error when name is cleared and saved (AC#1)', async ({ page }) => {
-    await page.getByPlaceholder('Corner Cup').fill('')
-    await page.getByRole('button', { name: /save changes/i }).click()
-    await expect(page.getByText(/business name is required/i)).toBeVisible()
+    await page.getByPlaceholder('קפה הפינה').fill('')
+    await page.getByRole('button', { name: 'שמירת השינויים' }).click()
+    await expect(page.getByText(/יש להזין שם עסק/)).toBeVisible()
   })
 })
