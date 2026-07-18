@@ -12,6 +12,12 @@ import { cn } from '@/lib/utils'
 
 type RewardStatus = 'active' | 'inactive'
 
+type ProductOption = {
+  id: string
+  name: string
+  image_urls: string[]
+}
+
 type Reward = {
   id: string
   name: string
@@ -19,6 +25,16 @@ type Reward = {
   points_cost: number
   status: RewardStatus
   image_url: string | null
+  product_ids: string[]
+  // First linked product's image — used as the display image fallback when
+  // no manual image_url is set (TASK-101).
+  linked_image_url: string | null
+}
+
+// Raw shape of the `load()` query — reward_products is a join table, so its
+// nested `products` embed is a to-one relation despite the plural name.
+type RewardRow = Omit<Reward, 'product_ids' | 'linked_image_url'> & {
+  reward_products: { product_id: string; products: { image_urls: string[] } | null }[]
 }
 
 type FormDraft = {
@@ -28,6 +44,7 @@ type FormDraft = {
   status: RewardStatus
   imageFile: File | null
   imagePreview: string | null
+  productIds: string[]
 }
 
 const EMPTY_DRAFT: FormDraft = {
@@ -37,6 +54,7 @@ const EMPTY_DRAFT: FormDraft = {
   status: 'active',
   imageFile: null,
   imagePreview: null,
+  productIds: [],
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -116,6 +134,7 @@ function RewardForm({
   saving,
   error,
   mode,
+  activeProducts,
 }: {
   draft: FormDraft
   onChange: (patch: Partial<FormDraft>) => void
@@ -124,6 +143,7 @@ function RewardForm({
   saving: boolean
   error: string | null
   mode: 'add' | 'edit'
+  activeProducts: ProductOption[]
 }) {
   const { t } = useTranslation()
   const { business } = useBusiness()
@@ -134,6 +154,14 @@ function RewardForm({
     const file = e.target.files?.[0]
     if (!file) return
     onChange({ imageFile: file, imagePreview: URL.createObjectURL(file) })
+  }
+
+  function toggleProduct(productId: string) {
+    onChange({
+      productIds: draft.productIds.includes(productId)
+        ? draft.productIds.filter(id => id !== productId)
+        : [...draft.productIds, productId],
+    })
   }
 
   return (
@@ -219,6 +247,29 @@ function RewardForm({
             </div>
           </div>
 
+          {/* Linked products */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">{t('admin.rewards.linkedProductsLabel')}</label>
+            <p className="text-xs text-muted-foreground">{t('admin.rewards.linkedProductsHint')}</p>
+            {activeProducts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{t('admin.rewards.noActiveProducts')}</p>
+            ) : (
+              <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
+                {activeProducts.map(p => (
+                  <label key={p.id} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-muted/20">
+                    <input
+                      type="checkbox"
+                      checked={draft.productIds.includes(p.id)}
+                      onChange={() => toggleProduct(p.id)}
+                      className="h-3.5 w-3.5 rounded border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    />
+                    <span className="flex-1 truncate">{p.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
@@ -246,6 +297,7 @@ function RewardRow({
   onDelete: () => void
 }) {
   const { t } = useTranslation()
+  const displayImage = reward.image_url ?? reward.linked_image_url
   return (
     <div
       onClick={onEdit}
@@ -253,8 +305,8 @@ function RewardRow({
     >
       {/* Thumbnail */}
       <div className="w-10 h-10 rounded-md overflow-hidden border shrink-0 bg-muted flex items-center justify-center">
-        {reward.image_url ? (
-          <img src={reward.image_url} alt={reward.name} className="w-full h-full object-cover" />
+        {displayImage ? (
+          <img src={displayImage} alt={reward.name} className="w-full h-full object-cover" />
         ) : (
           <Gift size={16} className="text-muted-foreground/40" />
         )}
@@ -320,20 +372,38 @@ export default function OwnerRewards() {
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
   const [deleteTarget, setDeleteTarget] = useState<Reward | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [activeProducts, setActiveProducts] = useState<ProductOption[]>([])
 
   const load = useCallback(async () => {
     if (!ownedBusinessId) return
     setLoading(true)
     const { data } = await supabase
       .from('rewards')
-      .select('id, name, description, points_cost, status, image_url')
+      .select('id, name, description, points_cost, status, image_url, reward_products(product_id, products(image_urls))')
       .eq('business_id', ownedBusinessId)
       .order('created_at')
-    setRewards((data ?? []) as Reward[])
+    setRewards(
+      ((data ?? []) as unknown as RewardRow[]).map(({ reward_products, ...r }) => ({
+        ...r,
+        product_ids: reward_products.map(rp => rp.product_id),
+        linked_image_url: reward_products[0]?.products?.image_urls[0] ?? null,
+      })),
+    )
     setLoading(false)
   }, [ownedBusinessId])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!ownedBusinessId) return
+    supabase
+      .from('products')
+      .select('id, name, image_urls')
+      .eq('business_id', ownedBusinessId)
+      .eq('status', 'active')
+      .order('name')
+      .then(({ data }) => setActiveProducts((data ?? []) as ProductOption[]))
+  }, [ownedBusinessId])
 
   function openAdd() {
     setEditingId(null)
@@ -351,6 +421,7 @@ export default function OwnerRewards() {
       status: reward.status,
       imageFile: null,
       imagePreview: reward.image_url,
+      productIds: reward.product_ids,
     })
     setFormError(null)
     setDrawerOpen(true)
@@ -363,6 +434,22 @@ export default function OwnerRewards() {
     if (error) return { error: error.message }
     const { data } = supabase.storage.from('reward-images').getPublicUrl(path)
     return { url: data.publicUrl }
+  }
+
+  // Replaces a reward's linked-products set wholesale — simpler than diffing
+  // and matches this page's existing non-transactional write style.
+  async function syncRewardProducts(rewardId: string, productIds: string[]) {
+    await supabase.from('reward_products').delete().eq('reward_id', rewardId)
+    if (productIds.length === 0) return
+    const { error } = await supabase
+      .from('reward_products')
+      .insert(productIds.map(product_id => ({ reward_id: rewardId, product_id, business_id: ownedBusinessId! })))
+    if (error) console.error('Failed to save linked products', error)
+  }
+
+  function linkedImageFor(productIds: string[]): string | null {
+    const first = activeProducts.find(p => p.id === productIds[0])
+    return first?.image_urls[0] ?? null
   }
 
   async function handleSave() {
@@ -396,9 +483,10 @@ export default function OwnerRewards() {
     if (editingId) {
       const { error } = await supabase.from('rewards').update(payload).eq('id', editingId)
       if (error) { setFormError(error.message); setSaving(false); return }
+      await syncRewardProducts(editingId, draft.productIds)
       setRewards(prev => prev.map(r =>
         r.id === editingId
-          ? { ...r, ...payload, image_url: imageUrl ?? r.image_url }
+          ? { ...r, ...payload, image_url: imageUrl ?? r.image_url, product_ids: draft.productIds, linked_image_url: linkedImageFor(draft.productIds) }
           : r,
       ))
       setToastMsg(t('admin.rewards.rewardUpdated'))
@@ -409,7 +497,8 @@ export default function OwnerRewards() {
         .select()
         .single()
       if (error) { setFormError(error.message); setSaving(false); return }
-      setRewards(prev => [...prev, data as Reward])
+      await syncRewardProducts(data.id, draft.productIds)
+      setRewards(prev => [...prev, { ...(data as Reward), product_ids: draft.productIds, linked_image_url: linkedImageFor(draft.productIds) }])
       setToastMsg(t('admin.rewards.rewardAdded'))
     }
 
@@ -495,6 +584,7 @@ export default function OwnerRewards() {
           saving={saving}
           error={formError}
           mode={editingId ? 'edit' : 'add'}
+          activeProducts={activeProducts}
         />
       )}
 
