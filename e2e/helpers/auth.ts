@@ -5,11 +5,15 @@ import type { Page } from '@playwright/test'
 // way to authenticate in e2e since Google OAuth isn't automatable.
 const TEST_PASSWORD = 'EnrollTest123!'
 
+// The admin app is Hebrew-only (see src/i18n/force-he.ts), so the sign-in
+// form's placeholders/button copy render in Hebrew, not English — target the
+// inputs by type/role instead of localized text so this helper doesn't break
+// every time copy changes or a new locale is added.
 async function submitDevSignIn(page: Page, email: string) {
   await page.goto('/sign-in')
-  await page.getByPlaceholder('Email').fill(email)
-  await page.getByPlaceholder('Password').fill(TEST_PASSWORD)
-  await page.getByRole('button', { name: 'Sign in with email' }).click()
+  await page.locator('input[type="email"]').fill(email)
+  await page.locator('input[type="password"]').fill(TEST_PASSWORD)
+  await page.locator('form button[type="submit"]').click()
 }
 
 // owner@test.com owns the Corner Cup business — signing in redirects off

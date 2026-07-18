@@ -69,7 +69,10 @@ function initials(name: string) {
   return name.split(' ').slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('')
 }
 
-function reasonLabel(t: TFunction, reason: string) {
+export function reasonLabel(t: TFunction, reason: string) {
+  // settle_order inserts 'order:<order_id>' (earn) / 'order:<order_id>:redeem' (pay-with-points) — see doc-8.
+  if (reason.startsWith('order:')) return reason.endsWith(':redeem') ? t('history.reason.redemption') : t('history.purchase')
+
   const map: Record<string, string> = {
     purchase: t('history.purchase'),
     service_visit: t('history.reason.service_visit'),
@@ -482,7 +485,7 @@ function PanelContent({
                           <p className="text-[11px] text-muted-foreground">{relativeDate(t, tx.created_at)}</p>
                         </div>
                       </div>
-                      <span className={cn(
+                      <span dir="ltr" className={cn(
                         'text-xs font-semibold tabular-nums shrink-0',
                         tx.points > 0 ? 'text-emerald-600' : 'text-red-500',
                       )}>

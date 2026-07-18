@@ -155,7 +155,7 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
     <div className="rounded-lg border bg-card flex flex-col">
       <div className="flex items-center justify-between border-b px-5 py-3">
         <span className="text-sm font-medium">{t('admin.dashboard.recentActivity')}</span>
-        <Link to="/owner/customers" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/owner/activity" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
           {t('admin.dashboard.viewAll')} <ChevronLeft size={13} />
         </Link>
       </div>
