@@ -84,8 +84,8 @@ function ImageUploadField({
       <div
         onClick={() => ref.current?.click()}
         className={cn(
-          'relative flex items-center justify-center rounded-lg border-2 border-dashed cursor-pointer hover:border-foreground/40 transition-colors',
-          preview ? 'border-transparent overflow-hidden h-32' : 'border-muted-foreground/30 h-24',
+          'relative flex items-center justify-center rounded-lg border-2 border-dashed cursor-pointer hover:border-foreground/40 transition-colors aspect-square h-32 w-32',
+          preview ? 'border-transparent overflow-hidden' : 'border-muted-foreground/30',
         )}
       >
         {preview ? (
@@ -131,15 +131,13 @@ export default function OwnerSettings() {
   // Image state
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [coverPreview, setCoverPreview] = useState<string | null>(null)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
 
   useEffect(() => {
     if (!ownedBusinessId) return
     let ignore = false
     supabase
       .from('businesses')
-      .select('name, slug, tagline, industry, address, hours, brand_color, logo_url, cover_image_url, currency')
+      .select('name, slug, tagline, industry, address, hours, brand_color, logo_url, currency')
       .eq('id', ownedBusinessId)
       .single()
       .then(({ data }) => {
@@ -156,7 +154,6 @@ export default function OwnerSettings() {
         setCurrency(loadedCurrency)
         setCurrencyLocked(loadedCurrency !== '')
         setLogoPreview(data.logo_url ?? null)
-        setCoverPreview(data.cover_image_url ?? null)
         setLoading(false)
       })
     return () => {
@@ -236,15 +233,10 @@ export default function OwnerSettings() {
     setSaving(true)
 
     let logoUrl: string | undefined
-    let coverUrl: string | undefined
 
     if (logoFile) {
       const url = await uploadImage(logoFile, 'business-assets', `${ownedBusinessId}/logo`)
       if (url) { logoUrl = url; setLogoPreview(url) }
-    }
-    if (coverFile) {
-      const url = await uploadImage(coverFile, 'business-assets', `${ownedBusinessId}/cover`)
-      if (url) { coverUrl = url; setCoverPreview(url) }
     }
 
     const payload: Record<string, string | null> = {
@@ -257,7 +249,6 @@ export default function OwnerSettings() {
       brand_color: brandColor,
       currency: currency || null,
       ...(logoUrl ? { logo_url: logoUrl } : {}),
-      ...(coverUrl ? { cover_image_url: coverUrl } : {}),
     }
 
     const { error } = await supabase
@@ -271,7 +262,6 @@ export default function OwnerSettings() {
     setOriginalSlug(trimmedSlug)
     setSlugAvailable(false)
     setLogoFile(null)
-    setCoverFile(null)
     if (currency) setCurrencyLocked(true)
     setToast(t('admin.settings.settingsSaved'))
   }
@@ -373,16 +363,11 @@ export default function OwnerSettings() {
         <div className="px-5 py-4 border-b">
           <h2 className="font-semibold text-sm">{t('admin.settings.imagesTitle')}</h2>
         </div>
-        <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="px-5 py-4">
           <ImageUploadField
             label={t('admin.settings.logoLabel')}
             preview={logoPreview}
             onFile={f => { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)) }}
-          />
-          <ImageUploadField
-            label={t('admin.settings.coverImageLabel')}
-            preview={coverPreview}
-            onFile={f => { setCoverFile(f); setCoverPreview(URL.createObjectURL(f)) }}
           />
         </div>
       </section>
