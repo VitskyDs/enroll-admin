@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test'
 import { signInAsOwner } from './helpers/auth'
+import { loadEnv } from './helpers/env'
+
+const env = loadEnv()
+const SUPABASE_URL = env.VITE_SUPABASE_URL
+const ANON_KEY = env.VITE_SUPABASE_ANON_KEY
 
 // Auth guard
 test('unauthenticated /owner/settings redirects to sign-in', async ({ page }) => {
@@ -191,5 +196,128 @@ test.describe('business profile settings (requires owner auth)', () => {
     await page.getByPlaceholder('קפה הפינה').fill('')
     await page.getByRole('button', { name: 'שמירת השינויים' }).click()
     await expect(page.getByText(/יש להזין שם עסק/)).toBeVisible()
+  })
+})
+
+// TASK-184 — the `business-assets` storage bucket Settings.tsx's logo upload
+// has always targeted never existed, so real uploads silently failed with a
+// "Bucket not found" 404 (same class of bug TASK-98 hit for product images
+// and TASK-95 for reward images, both fixed by creating their bucket via
+// migration). TASK-182 made that failure surface as a visible error instead
+// of failing silently; TASK-184's migration (20260719120000, in
+// enroll-consumer) creates the bucket itself. Neither prior task added e2e
+// coverage of the Settings logo field's upload path specifically (checked:
+// no existing spec references `business-assets` or `logoUploadFailed`).
+//
+// This first test mirrors owner-products.spec.ts's TASK-98 "upload fails"
+// test — it mocks the storage endpoint, so it's deterministic and passes
+// today regardless of whether the migration has landed.
+const TINY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+)
+
+test.describe('logo upload error handling (TASK-184, requires owner auth)', () => {
+  test.beforeEach(async ({ page }) => {
+    await signInAsOwner(page)
+    await page.goto('/owner/settings')
+  })
+
+  // The admin app doesn't have an `admin.settings.logoUploadFailed` (or
+  // `uploadImageAriaLabel`) translation in the installed @vitskyds/enroll-core
+  // build yet — i18next's missing-key fallback renders the key itself, so
+  // that's the exact string that shows up right now. Asserting on "an error
+  // paragraph is present and non-empty" would be more translation-churn-proof,
+  // but would also pass even if the app regressed to showing nothing —
+  // asserting the real current text catches that case ("logo" is a literal
+  // English key fragment so this won't collide with any real Hebrew copy).
+  test('surfaces an error and does not save when the logo upload fails (AC#3)', async ({ page }) => {
+    await page.route('**/storage/v1/object/business-assets/**', route =>
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'Bucket not found' }) }),
+    )
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'test.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG,
+    })
+    await page.getByRole('button', { name: 'שמירת השינויים' }).click()
+    await expect(page.getByText(/logoUploadFailed/)).toBeVisible()
+    await expect(page.getByText('ההגדרות נשמרו')).not.toBeVisible()
+  })
+})
+
+// TASK-184 AC#2 — "A real (unmocked) logo upload in Settings succeeds
+// end-to-end and the logo persists after a page reload." Unlike the test
+// above, this hits the real business-assets bucket with no route mocking.
+//
+// IMPORTANT: this only passes once migration 20260719120000
+// (business_assets_bucket.sql, in enroll-consumer) has actually been applied
+// to the live Supabase project via `supabase db push` — that's a separate,
+// deliberate step requiring the user's explicit go-ahead (doc-13: one shared
+// project backs local/preview/prod, no isolated test database). Until then,
+// this test is expected to fail the same way production currently does: the
+// upload 404s, Settings.tsx's TASK-182 error path kicks in, and the
+// "settings saved" toast never appears.
+//
+// owner@test.com owns exactly one real business (Corner Cup) — there's no
+// throwaway business to upload to, so this overwrites that business's live
+// logo_url. Snapshots the original value and restores it in a `finally`
+// block via direct REST (independent of the browser session), the same
+// capture/verify/cleanup pattern owner-onboarding.spec.ts's TASK-125 test
+// uses, so re-running this test repeatedly is idempotent and leaves no
+// visible trace on the real business record.
+test.describe('logo upload against the real business-assets bucket (TASK-184 AC#2)', () => {
+  test.skip(!SUPABASE_URL || !ANON_KEY, 'requires .env with Supabase credentials')
+
+  test.beforeEach(async ({ page }) => {
+    await signInAsOwner(page)
+    await page.goto('/owner/settings')
+  })
+
+  test('a real logo upload persists after a page reload', async ({ page, request }) => {
+    const signIn = await request.post(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      headers: { apikey: ANON_KEY!, 'Content-Type': 'application/json' },
+      data: { email: 'owner@test.com', password: 'EnrollTest123!' },
+    })
+    expect(signIn.ok(), 'owner@test.com sign-in should succeed').toBeTruthy()
+    const { access_token, user } = await signIn.json()
+    const authHeaders = { apikey: ANON_KEY!, Authorization: `Bearer ${access_token}` }
+
+    const bizRes = await request.get(
+      `${SUPABASE_URL}/rest/v1/businesses?select=id,logo_url&owner_id=eq.${user.id}`,
+      { headers: authHeaders },
+    )
+    const [biz] = await bizRes.json()
+    expect(biz, "owner@test.com's business should exist").toBeTruthy()
+    const originalLogoUrl: string | null = biz.logo_url
+
+    try {
+      await page.locator('input[type=file]').setInputFiles({
+        name: 'e2e-logo.png',
+        mimeType: 'image/png',
+        buffer: TINY_PNG,
+      })
+      await page.getByRole('button', { name: 'שמירת השינויים' }).click()
+
+      // Once the bucket exists, save succeeds with the normal toast and no
+      // logo error — see the describe block's header comment for why this
+      // currently fails until the migration is applied.
+      await expect(page.getByText('ההגדרות נשמרו')).toBeVisible()
+      await expect(page.getByText(/logoUploadFailed/)).not.toBeVisible()
+
+      await page.reload()
+      const logoImg = page.getByAltText('לוגו')
+      await expect(logoImg).toBeVisible()
+      const src = await logoImg.getAttribute('src')
+      expect(src, 'logo src should be a real uploaded URL, not the stale local blob preview').toBeTruthy()
+      expect(src).toContain('business-assets')
+      expect(src).not.toMatch(/^blob:/)
+    } finally {
+      const restore = await request.patch(`${SUPABASE_URL}/rest/v1/businesses?id=eq.${biz.id}`, {
+        headers: { ...authHeaders, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        data: { logo_url: originalLogoUrl },
+      })
+      expect(restore.ok(), 'cleanup restore of logo_url should succeed').toBeTruthy()
+    }
   })
 })
