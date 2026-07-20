@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@vitskyds/enroll-ui'
 import { Button } from '@vitskyds/enroll-ui'
+import { applyBrandColor } from '@vitskyds/enroll-core'
 import { cn } from '@/lib/utils'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -222,6 +223,7 @@ export default function OwnerSettings() {
       return
     }
 
+    applyBrandColor(brandColor)
     setLogoFile(null)
     setErrors(prev => { if (!prev.logo) return prev; const n = { ...prev }; delete n.logo; return n })
     setToast(t('admin.settings.settingsSaved'))
