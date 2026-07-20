@@ -165,7 +165,7 @@ function CustomerCard({
   onPrev: () => void
   submitting: boolean
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [actionType, setActionType] = useState<ActionType>('gift_points')
   const [giftPoints, setGiftPoints] = useState('')
   const [giftNote, setGiftNote] = useState('')
@@ -237,9 +237,9 @@ function CustomerCard({
         </div>
 
         {/* AI reason */}
-        {customer.churn_risk_reason && (
+        {customer.churn_risk_reason && i18n.exists(`admin.catchUp.reason.${customer.churn_risk_reason}`) && (
           <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-3 italic">
-            "{customer.churn_risk_reason}"
+            {t(`admin.catchUp.reason.${customer.churn_risk_reason}`)}
           </div>
         )}
 
