@@ -459,6 +459,11 @@ function ServiceRow({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
+// Consumer side (TASK-146/147) doesn't exist yet — keep the CRUD surface below
+// intact but gated behind a coming-soon state until that lands. Flip to `true`
+// to re-enable.
+const SERVICES_MANAGEMENT_ENABLED = false
+
 export default function OwnerServices() {
   const { t } = useTranslation()
   const { ownedBusinessId } = useAuth()
@@ -488,7 +493,21 @@ export default function OwnerServices() {
     setLoading(false)
   }, [ownedBusinessId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { if (SERVICES_MANAGEMENT_ENABLED) load() }, [load])
+
+  if (!SERVICES_MANAGEMENT_ENABLED) {
+    return (
+      <div className="p-4 md:p-6 max-w-3xl mx-auto">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border bg-card px-6 py-16 text-center">
+          <Wrench size={28} className="text-muted-foreground/40" />
+          <div className="space-y-1">
+            <h1 className="text-base font-semibold">{t('admin.services.comingSoonTitle')}</h1>
+            <p className="text-sm text-muted-foreground">{t('admin.services.comingSoonDesc')}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   function openAdd() {
     setEditingId(null)
