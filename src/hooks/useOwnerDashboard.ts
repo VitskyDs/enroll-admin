@@ -15,6 +15,7 @@ export type DashboardStats = {
 
 export type RecentActivity = {
   id: string
+  customerId: string
   customerName: string
   points: number
   reason: string
@@ -154,7 +155,7 @@ export function useOwnerDashboard() {
             .maybeSingle(),
           supabase
             .from('point_transactions')
-            .select('id, points, reason, created_at, customers(name)')
+            .select('id, points, reason, created_at, customer_id, customers(name)')
             .eq('business_id', ownedBusinessId)
             .order('created_at', { ascending: false })
             .limit(6),
@@ -221,6 +222,7 @@ export function useOwnerDashboard() {
             const customer = Array.isArray(r.customers) ? r.customers[0] : r.customers
             return {
               id: r.id,
+              customerId: r.customer_id,
               customerName: (customer as { name: string } | null)?.name ?? 'Unknown',
               points: r.points,
               reason: r.reason,

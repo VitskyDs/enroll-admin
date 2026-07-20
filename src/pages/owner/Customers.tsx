@@ -219,7 +219,7 @@ export default function OwnerCustomers() {
   const { customers, loading } = useOwnerCustomers()
   const { ownedBusinessId } = useAuth()
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [tierFilter, setTierFilter] = useState<TierFilter>('all')
@@ -227,8 +227,19 @@ export default function OwnerCustomers() {
   const [lastVisitFilter, setLastVisitFilter] = useState<LastVisitFilter>('all')
   const [sortField, setSortField] = useState<SortField>('last_visit_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+
+  // The selected customer is addressed by the `customer` URL param, not local
+  // state, so a detail view can be reloaded or shared as a link.
+  const selectedId = searchParams.get('customer')
+  const selectCustomer = useCallback((id: string | null) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (id) next.set('customer', id)
+      else next.delete('customer')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -432,7 +443,7 @@ export default function OwnerCustomers() {
                       key={c.id}
                       customer={c}
                       selected={c.id === selectedId}
-                      onClick={() => setSelectedId(id => id === c.id ? null : c.id)}
+                      onClick={() => selectCustomer(selectedId === c.id ? null : c.id)}
                     />
                   ))}
                 </tbody>
@@ -445,7 +456,7 @@ export default function OwnerCustomers() {
                     key={c.id}
                     customer={c}
                     selected={c.id === selectedId}
-                    onClick={() => setSelectedId(id => id === c.id ? null : c.id)}
+                    onClick={() => selectCustomer(selectedId === c.id ? null : c.id)}
                   />
                 ))}
               </div>
@@ -473,14 +484,14 @@ export default function OwnerCustomers() {
       <CustomerDetailPanel
         customer={selectedId ? (customers.find(c => c.id === selectedId) ?? null) : null}
         businessId={ownedBusinessId}
-        onClose={() => setSelectedId(null)}
+        onClose={() => selectCustomer(null)}
       />
 
       {/* Mobile bottom drawer */}
       <CustomerDetailDrawer
         customer={selectedId ? (customers.find(c => c.id === selectedId) ?? null) : null}
         businessId={ownedBusinessId}
-        onClose={() => setSelectedId(null)}
+        onClose={() => selectCustomer(null)}
       />
     </div>
   )

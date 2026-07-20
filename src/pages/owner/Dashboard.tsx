@@ -176,17 +176,22 @@ function RecentActivityCard({ items, loading }: { items: RecentActivity[]; loadi
       ) : (
         <ul className="divide-y">
           {items.map(a => (
-            <li key={a.id} className="flex items-center gap-3 px-5 py-3">
-              <div className="flex items-center justify-center size-8 rounded-full bg-muted text-[11px] font-semibold text-muted-foreground shrink-0">
-                {initials(a.customerName)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{a.customerName}</p>
-                <p className="text-xs text-muted-foreground truncate">{activityLabel(t, a)}</p>
-              </div>
-              <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                <Clock size={11} /> {timeAgo(t, a.createdAt)}
-              </span>
+            <li key={a.id}>
+              <Link
+                to={`/owner/customers?customer=${encodeURIComponent(a.customerId)}`}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <div className="flex items-center justify-center size-8 rounded-full bg-muted text-[11px] font-semibold text-muted-foreground shrink-0">
+                  {initials(a.customerName)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{a.customerName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{activityLabel(t, a)}</p>
+                </div>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                  <Clock size={11} /> {timeAgo(t, a.createdAt)}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
