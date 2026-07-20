@@ -420,10 +420,9 @@ export default function CatchUp() {
 
       const [customersRes, rewardsRes] = await Promise.all([
         supabase
-          .from('customers')
+          .from('active_at_risk_customers')
           .select('id, name, tier, points, last_visit_at, churn_risk_reason, churn_risk_score')
           .eq('business_id', ownedBusinessId)
-          .gte('churn_risk_score', 0.5)
           .order('churn_risk_score', { ascending: false }),
         supabase
           .from('rewards')

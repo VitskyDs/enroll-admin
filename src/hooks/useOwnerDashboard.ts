@@ -139,10 +139,9 @@ export function useOwnerDashboard() {
             .eq('business_id', ownedBusinessId)
             .eq('status', 'completed'),
           supabase
-            .from('customers')
+            .from('active_at_risk_customers')
             .select('id', { count: 'exact', head: true })
-            .eq('business_id', ownedBusinessId)
-            .gte('churn_risk_score', 0.5),
+            .eq('business_id', ownedBusinessId),
           supabase
             .from('loyalty_programs')
             .select('punch_card_target')
