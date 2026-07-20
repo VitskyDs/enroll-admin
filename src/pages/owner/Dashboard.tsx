@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  TrendingUp, TrendingDown, Minus, ArrowRight, AlertTriangle, CheckCircle2,
+  TrendingUp, TrendingDown, Minus, ArrowLeft, AlertTriangle, CheckCircle2,
   Search, Sparkles, ChevronLeft, Clock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -119,7 +119,7 @@ function CatchUpBanner({ count, loading }: { count: number; loading: boolean }) 
         </span>
       </div>
       <span className="flex items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-400 shrink-0 group-hover:gap-2 transition-all">
-        {t('admin.nav.catchUp')} <ArrowRight size={14} />
+        {t('admin.nav.catchUp')} <ArrowLeft size={14} />
       </span>
     </Link>
   )
