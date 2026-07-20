@@ -1,11 +1,13 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { CurrencyProvider } from '@/contexts/CurrencyContext'
+import { useBusiness } from '@/hooks/useBusiness'
 import { OwnerLayout } from '@/components/owner-layout'
 import { LoadingScreen } from '@/components/loading-screen'
 import { Button } from '@vitskyds/enroll-ui'
+import { useBrandColor } from '@vitskyds/enroll-core'
 
 const SignIn = lazy(() => import('@/pages/SignIn'))
 const AuthCallback = lazy(() => import('@/pages/AuthCallback'))
@@ -58,10 +60,9 @@ function RequireOwner({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, isLoading, isOwner, isOwnerLoading } = useAuth()
+  const { business } = useBusiness()
 
-  useEffect(() => {
-    document.documentElement.style.setProperty('--brand', 'oklch(0.145 0 0)')
-  }, [])
+  useBrandColor(business?.brand_color, 'oklch(0.145 0 0)')
 
   // Only redirect to /owner once we know the user IS an owner — redirecting on
   // `user` alone would send an authenticated non-owner back to /owner, which
