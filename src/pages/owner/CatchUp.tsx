@@ -175,9 +175,9 @@ function CustomerCard({
   useEffect(() => {
     setActionType('gift_points')
     setGiftPoints('')
-    setGiftNote('')
+    setGiftNote(t('admin.catchUp.giftNoteDefault'))
     setRewardId(rewards[0]?.id ?? '')
-  }, [customer.id, rewards])
+  }, [customer.id, rewards, t])
 
   function handleSubmit() {
     if (actionType === 'gift_points') {
