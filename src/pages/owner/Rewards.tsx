@@ -439,14 +439,33 @@ export default function OwnerRewards() {
   }
 
   // Replaces a reward's linked-products set wholesale — simpler than diffing
-  // and matches this page's existing non-transactional write style.
-  async function syncRewardProducts(rewardId: string, productIds: string[]) {
-    await supabase.from('reward_products').delete().eq('reward_id', rewardId)
-    if (productIds.length === 0) return
+  // and matches this page's existing non-transactional write style. Returns
+  // the Supabase error (delete or insert) on failure so the caller can surface
+  // it and avoid trusting the draft's productIds as the new source of truth.
+  async function syncRewardProducts(rewardId: string, productIds: string[]): Promise<{ error: string } | null> {
+    const del = await supabase.from('reward_products').delete().eq('reward_id', rewardId)
+    if (del.error) return { error: del.error.message }
+    if (productIds.length === 0) return null
     const { error } = await supabase
       .from('reward_products')
       .insert(productIds.map(product_id => ({ reward_id: rewardId, product_id, business_id: ownedBusinessId! })))
-    if (error) console.error('Failed to save linked products', error)
+    if (error) return { error: error.message }
+    return null
+  }
+
+  // Ground truth for a reward's linked products, read back from the DB —
+  // used after a failed sync since the delete may have succeeded even though
+  // the insert didn't, leaving the draft's productIds out of sync with reality.
+  async function fetchLinkedProducts(rewardId: string): Promise<{ product_ids: string[]; linked_image_url: string | null }> {
+    const { data } = await supabase
+      .from('reward_products')
+      .select('product_id, products(image_urls)')
+      .eq('reward_id', rewardId)
+    const rows = (data ?? []) as unknown as { product_id: string; products: { image_urls: string[] } | null }[]
+    return {
+      product_ids: rows.map(r => r.product_id),
+      linked_image_url: rows[0]?.products?.image_urls[0] ?? null,
+    }
   }
 
   function linkedImageFor(productIds: string[]): string | null {
@@ -485,7 +504,18 @@ export default function OwnerRewards() {
     if (editingId) {
       const { error } = await supabase.from('rewards').update(payload).eq('id', editingId)
       if (error) { setFormError(error.message); setSaving(false); return }
-      await syncRewardProducts(editingId, draft.productIds)
+      const syncResult = await syncRewardProducts(editingId, draft.productIds)
+      if (syncResult) {
+        const actual = await fetchLinkedProducts(editingId)
+        setRewards(prev => prev.map(r =>
+          r.id === editingId
+            ? { ...r, ...payload, image_url: imageUrl ?? r.image_url, product_ids: actual.product_ids, linked_image_url: actual.linked_image_url }
+            : r,
+        ))
+        setFormError(syncResult.error)
+        setSaving(false)
+        return
+      }
       setRewards(prev => prev.map(r =>
         r.id === editingId
           ? { ...r, ...payload, image_url: imageUrl ?? r.image_url, product_ids: draft.productIds, linked_image_url: linkedImageFor(draft.productIds) }
@@ -499,7 +529,17 @@ export default function OwnerRewards() {
         .select()
         .single()
       if (error) { setFormError(error.message); setSaving(false); return }
-      await syncRewardProducts(data.id, draft.productIds)
+      // The reward row now exists — switch to edit mode so a retry after a
+      // sync failure below updates it instead of inserting a duplicate.
+      setEditingId(data.id)
+      const syncResult = await syncRewardProducts(data.id, draft.productIds)
+      if (syncResult) {
+        const actual = await fetchLinkedProducts(data.id)
+        setRewards(prev => [...prev, { ...(data as Reward), product_ids: actual.product_ids, linked_image_url: actual.linked_image_url }])
+        setFormError(syncResult.error)
+        setSaving(false)
+        return
+      }
       setRewards(prev => [...prev, { ...(data as Reward), product_ids: draft.productIds, linked_image_url: linkedImageFor(draft.productIds) }])
       setToastMsg(t('admin.rewards.rewardAdded'))
     }
